@@ -37,10 +37,10 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-16 pb-20 text-center lg:text-left">
           {/* Brand & Mission - Spans 4 columns */}
           <div className="lg:col-span-4 flex flex-col items-center lg:items-start">
-            <Link to="/" className="text-3xl font-black text-slate-900 tracking-tighter mb-8 flex items-center gap-2 group" onClick={() => scrollToSection('#hero')}>
+            <Link to="/" className="text-3xl font-black text-slate-900 tracking-tighter mb-2 flex items-center gap-2 group" onClick={() => scrollToSection('#hero')}>
               CIETM <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 p-1">2026</span>
             </Link>
-            <p className="text-slate-500 leading-relaxed mb-10 text-base max-w-sm font-medium">
+            <p className="text-slate-500 leading-relaxed mb-10 text-base max-w-sm font-medium text-justify">
               Join the global dialogue at the prestigious International Conference on Engineering, Technology and Management. 
               Driving innovation through multidisciplinary excellence.
             </p>
@@ -51,7 +51,7 @@ const Footer = () => {
               <a href="#" aria-label="Instagram" className={socialLinkClass}><Instagram size={20} /></a>
             </div>
           </div>
-
+    
           {/* Quick Links Group */}
           <div className="lg:col-span-4 grid grid-cols-2 gap-8 w-full">
             <div>
@@ -101,7 +101,7 @@ const Footer = () => {
                     <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-indigo-500 shrink-0 shadow-sm border border-slate-100 group-hover/item:bg-indigo-600 group-hover/item:text-white transition-all duration-300">
                       <Mail size={20} />
                     </div>
-                    <span className="lg:pt-2 hover:text-indigo-600 transition-colors text-center lg:text-left font-bold">info@cietm2026.com</span>
+                    <span className="lg:pt-2 hover:text-indigo-600 transition-colors text-center lg:text-left font-bold">info@cietcbe.edu.in</span>
                   </a>
                 </li>
               </ul>

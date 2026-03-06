@@ -50,14 +50,28 @@ const CountdownTimer = ({ targetDate }) => {
 
 const HomePage = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [themePage, setThemePage] = useState(0);
+
+  const [itemsPerPage, setItemsPerPage] = useState(window.innerWidth < 768 ? 3 : 6);
 
   useEffect(() => {
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 400);
     };
+    const handleResize = () => {
+      const newItemsPerPage = window.innerWidth < 768 ? 3 : 6;
+      if (newItemsPerPage !== itemsPerPage) {
+        setItemsPerPage(newItemsPerPage);
+        setThemePage(0);
+      }
+    };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [itemsPerPage]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -122,15 +136,9 @@ const HomePage = () => {
   ];
 
   const advisoryBoard = [
-    { name: "Prof. Robert Chen", affiliation: "University of Oxford", img: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop" },
+    { name: "Dr. Gokul Shanmugan", affiliation: "Associate Professor and Head - EEE, Dean - Affiliations and Approvals", img: "/advisory/Gokul Shanmugan.jpeg" },
     { name: "Dr. Elena Rossi", affiliation: "Research Director, CERN", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop" },
     { name: "Prof. Sanjay Gupta", affiliation: "IIT Delhi", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&h=400&fit=crop" },
-    { name: "Dr. Sarah Miller", affiliation: "Director of AI, Google", img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop" },
-    { name: "Prof. Yuki Tanaka", affiliation: "University of Tokyo", img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop" },
-    { name: "Dr. James Wilson", affiliation: "Fellow, IEEE", img: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop" },
-    { name: "Prof. Maria Garcia", affiliation: "Technical University of Munich", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop" },
-    { name: "Dr. Ahmed Mansour", affiliation: "KAUST", img: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=400&h=400&fit=crop" },
-    { name: "Prof. Linda Thompson", affiliation: "UC Berkeley", img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop" },
     { name: "Dr. Thomas Wright", affiliation: "Chief Scientist, IBM Research", img: "https://images.unsplash.com/photo-1548142813-c348350df52b?w=400&h=400&fit=crop" }
   ];
 
@@ -244,57 +252,90 @@ const HomePage = () => {
 
           </div>
 
-          {/* Topics of Interest - Updated from Reference */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[40px] blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-            <div className="bg-slate-950 rounded-[30px] md:rounded-[40px] p-6 sm:p-10 md:p-16 text-white relative overflow-hidden shadow-2xl border border-white/5">
-              <div className="absolute top-0 right-0 w-[600px] h-full bg-[radial-gradient(circle_at_70%_30%,rgba(99,102,241,0.15),transparent_70%)] pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 w-full h-[300px] bg-gradient-to-t from-slate-950 to-transparent pointer-events-none"></div>
+          {/* Topics of Interest - Updated to support pagination for 13 programs */}
+          <div className="relative group p-1 max-w-5xl mx-auto" id="themes-pagination">
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[20px] md:rounded-[30px] blur-md opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+            <div className="bg-slate-950 rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 text-white relative overflow-hidden shadow-2xl border border-white/5 w-full">
+              <div className="absolute top-0 right-0 w-[400px] h-full bg-[radial-gradient(circle_at_70%_30%,rgba(99,102,241,0.15),transparent_70%)] pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-full h-[200px] bg-gradient-to-t from-slate-950 to-transparent pointer-events-none"></div>
 
-              <div className="relative z-10 text-center max-w-5xl mx-auto">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-[24px] bg-white/5 mb-8 text-indigo-400 backdrop-blur-md border border-white/10 rotate-3 group-hover:rotate-0 transition-transform duration-500">
-                  <Sparkles size={40} className="drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+              <div className="relative z-10 text-center mx-auto">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-[20px] bg-white/5 mb-6 text-indigo-400 backdrop-blur-md border border-white/10 rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                  <Sparkles size={32} className="drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
                 </div>
-                <h3 className="text-3xl md:text-6xl font-black mb-12 uppercase tracking-tighter relative inline-block text-white leading-tight">
+                <h3 className="text-3xl md:text-5xl font-black mb-6 uppercase tracking-tighter relative inline-block text-white leading-tight">
                   Themes <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">Unlimited</span>
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                  {[
-                    { dept: "Computing & AI", tech: "Artificial Intelligence, Machine Learning, Data Science & Cyber Security" },
-                    { dept: "Electronics & Communication", tech: "Internet of Things (IoT), VLSI, Robotics & 5G Networks" },
-                    { dept: "Mechanical & Mechatronics", tech: "Electric Vehicles (EV), Industry 4.0, Automation & Nano Tech" },
-                    { dept: "Civil & Infrastructure", tech: "Sustainable Engineering, BIM, Smart Cities & Green Building" },
-                    { dept: "Management & Economics", tech: "Digital Transformation, Fintech, ESG & Circular Economy" },
-                    { dept: "Applied Sciences", tech: "Advanced Materials, Quantum Physics & Environmental Science" }
-                  ].map((item, idx) => (
-                    <motion.div
-                      key={idx}
-                      whileHover={{ scale: 1.02 }}
-                      className="p-6 md:p-8 rounded-[24px] bg-white/5 hover:bg-white/10 transition-all border border-white/5 hover:border-white/15 backdrop-blur-sm group/item relative overflow-hidden"
-                    >
-                      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-500 to-purple-600 opacity-0 group-hover/item:opacity-100 transition-opacity"></div>
-                      <div className="flex gap-4">
-                        <span className="text-indigo-500/40 font-black text-2xl">0{idx + 1}</span>
-                        <div>
-                          <h4 className="text-indigo-400 font-extrabold text-xs uppercase mb-2 tracking-widest">{item.dept}</h4>
-                          <p className="text-lg md:text-xl font-bold leading-relaxed text-slate-100 italic">
-                            "{item.tech}"
-                          </p>
+                <div className="relative px-8 md:px-16">
+                  {/* Theme Cards Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-6 min-h-[350px]">
+                    {[
+                      { id: "01", dept: "AI & Data Science", tech: "Artificial Intelligence & Data Science", desc: "Digital Applications & Innovations in Computer Science." },
+                      { id: "02", dept: "Civil", tech: "Civil Engineering", desc: "Innovations in Civil Engineering, Sustainable Housing and Other Infrastructure Intelligence." },
+                      { id: "03", dept: "Computer Science", tech: "Computer Science & Engineering", desc: "Digital Applications & Innovations in Computer Science." },
+                      { id: "04", dept: "CSE (AI & ML)", tech: "Artificial Intelligence & Machine Learning", desc: "Digital Applications & Innovations in Computer Science." },
+                      { id: "05", dept: "CSE (Cyber Security)", tech: "Cyber Security", desc: "Digital Applications & Innovations in Computer Science." },
+                      { id: "06", dept: "Electrical & Electronics", tech: "Electrical & Electronics Engineering", desc: "Technology for Renewable Energy and Innovations in Electrical Engineering." },
+                      { id: "07", dept: "Electronics & VLSI", tech: "Electronics & VLSI Design", desc: "Innovations in Information Technology, Communication Engineering & VLSI Design." },
+                      { id: "08", dept: "Information Tech", tech: "Information Technology", desc: "Innovations in Information Technology & Digital Applications." },
+                      { id: "09", dept: "Mechanical", tech: "Mechanical Engineering", desc: "Innovations in Mechanical Engineering." },
+                      { id: "10", dept: "Mechatronics", tech: "Mechatronics Engineering", desc: "Innovations in Mechatronics Engineering." },
+                      { id: "11", dept: "Science & Humanities", tech: "Science & Humanities", desc: "Application of Green Technology and Innovative Models for Economic Sustainability." },
+                      { id: "12", dept: "Management", tech: "MBA - Business Administration", desc: "Innovative Models for Economic Sustainability & Operations Management." }
+                    ].slice(themePage * itemsPerPage, (themePage * itemsPerPage) + itemsPerPage).map((item, idx) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, delay: idx * 0.05 }}
+                        whileHover={{ scale: 1.02 }}
+                        className="p-4 md:p-6 rounded-[20px] bg-white/10 hover:bg-white/20 transition-all border border-white/20 hover:border-white/40 backdrop-blur-xl shadow-[0_8px_32px_0_rgba(255,255,255,0.05)] group/item relative overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-purple-400 opacity-0 group-hover/item:opacity-100 transition-opacity"></div>
+                        <div className="flex gap-3 items-start mb-2">
+                          <span className="text-indigo-300/60 font-black text-xl drop-shadow-md shrink-0 w-8 mt-0.5">{item.id}</span>
+                          <div>
+                            <h4 className="text-white font-bold text-base md:text-lg leading-tight drop-shadow-md mb-0.5">{item.tech}</h4>
+                            <p className="text-indigo-300 font-extrabold text-[0.6rem] uppercase tracking-widest opacity-80">{item.dept}</p>
+                          </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                        <p className="text-xs md:text-sm text-slate-300 font-medium leading-relaxed pl-11 italic opacity-90">
+                          "{item.desc}"
+                        </p>
+                      </motion.div>
+                    ))}
+                  </div>
 
-                <div className="mt-12 pt-8 border-t border-white/10 flex flex-col items-center gap-4">
-                  <p className="text-sm text-slate-400 font-bold uppercase tracking-[0.3em]">And many more interdisciplinary topics</p>
-                  <div className="flex gap-2">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="w-1.5 h-1.5 rounded-full bg-indigo-500/40"></div>
+                  {/* Left Button */}
+                  <button
+                    onClick={() => setThemePage(Math.max(0, themePage - 1))}
+                    disabled={themePage === 0}
+                    className="absolute left-0 md:left-2 top-[45%] -translate-y-1/2 z-20 p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/20 hover:border-white/30 disabled:opacity-0 transition-all backdrop-blur-md shadow-xl"
+                  >
+                    <ChevronLeft className="text-white w-6 h-6 md:w-8 md:h-8" />
+                  </button>
+
+                  {/* Right Button */}
+                  <button
+                    onClick={() => setThemePage(Math.min(Math.ceil(12 / itemsPerPage) - 1, themePage + 1))}
+                    disabled={themePage === Math.ceil(12 / itemsPerPage) - 1}
+                    className="absolute right-0 md:right-2 top-[45%] -translate-y-1/2 z-20 p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/20 hover:border-white/30 disabled:opacity-0 transition-all backdrop-blur-md shadow-xl"
+                  >
+                    <ChevronRight className="text-white w-6 h-6 md:w-8 md:h-8" />
+                  </button>
+
+                  {/* Pagination Dots */}
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    {Array.from({ length: Math.ceil(12 / itemsPerPage) }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-2 rounded-full transition-all duration-300 ${i === themePage ? 'w-8 bg-indigo-400' : 'w-2 bg-white/20'}`}
+                      />
                     ))}
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -633,8 +674,8 @@ const HomePage = () => {
             <h3 className="text-2xl font-bold text-slate-500 uppercase tracking-[0.2em] text-center mb-12 mt-20 flex items-center justify-center gap-6 before:content-[''] before:h-px before:w-[60px] before:bg-slate-300 after:content-[''] after:h-px after:w-[60px] after:bg-slate-300">Convenor</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-3xl mx-auto justify-center">
               {[
-                { name: "Convenor Name 1", role: "Professor & Head", img: null },
-                { name: "Convenor Name 2", role: "Professor & Head", img: null }
+                { name: "Dr. P. Magudeaswaran", role: "Head Of the Department - Civil", img: null },
+                { name: "Dr. V. Rajkumar", role: "Associate Professor - Mechanical", img: null }
               ].map((p, i) => (
                 <motion.div
                   key={i}
@@ -657,19 +698,19 @@ const HomePage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-8 max-w-6xl mx-auto px-4">
               {[
                 { name: "Mr. G. R. Seenivasan", role: "Assistant Professor", dept: "Civil Engineering", img: "/organizing team/G R Seenivasan.jpeg" },
-                { name: "Ms. R. Yoga", role: "Assistant Professor", dept: "CSE", img: "/organizing team/Yoga.png" },
-                { name: "Ms. M. Abirami", role: "Assistant Professor", dept: "CSE", img: "/organizing team/Abirami.png" },
-                { name: "Ms. P. Chandralakshmi", role: "Assistant Professor", dept: "EEE", img: "/organizing team/Chandralakshmi.jpeg" },
-                { name: "Ms. R. R. Yuganandhine", role: "Assistant Professor", dept: "ECE", img: "/organizing team/Yuganandhine.png" },
+                { name: "Ms. N. Mithraa", role: "Assistant Professor", dept: "Information Technology", img: "/organizing team/Nmithra.jpeg" },
+                { name: "Ms. R. Yoga", role: "Assistant Professor", dept: "Computer Science & Engineering", img: "/organizing team/Yoga.png" },
+                { name: "Ms. M. Abirami", role: "Assistant Professor", dept: "Computer Science & Engineering", img: "/organizing team/Abirami.png" },
+                { name: "Ms. P. Chandralakshmi", role: "Assistant Professor", dept: "Electrical & Electronics Engineering", img: "/organizing team/Chandralakshmi.jpeg" },
+                { name: "Mr. S. Arunkumar ", role: "Assistant Professor", dept: "Electronics Engineering - VLSI", img: "/organizing team/Arunkumar .jpeg" },
+                { name: "Ms. R. R. Yuganandhine", role: "Assistant Professor", dept: "Electronics & Communication Engineering", img: "/organizing team/Yuganandhine.png" },
                 { name: "Dr. L. Venkatesh", role: "Associate Professor", dept: "Mechanical Engineering", img: "/organizing team/venkatesh.jpeg" },
                 { name: "Mr. K. Senthilkumar", role: "Assistant Professor", dept: "Mechatronics Engineering", img: "/organizing team/Senthilkumar K.jpg.jpeg" },
-                { name: "Ms. N. Mithra", role: "Assistant Professor", dept: "Information Technology", img: "/organizing team/Nmithra.jpeg" },
-                { name: "Ms. T. Malarvizhi", role: "Assistant Professor", dept: "AI & DS", img: "/organizing team/Malarvizhi.png" },
-                { name: "Dr. M. Arunmozhi", role: "Associate Professor", dept: "MBA/DoMS", img: "/organizing team/Arunmozhi.jpeg" },
-                { name: "Ms. S. R. Sarvada", role: "Assistant Professor", dept: "S&H - English", img: "/organizing team/S.R.Sarvada.jpeg" },
-                { name: "Ms. V. Mohana Priya", role: "Assistant Professor", dept: "Mathematics", img: "/organizing team/Mohana-Priya .jpeg" },
-                { name: "Ms. Sangavi", role: "Assistant Professor", dept: "S&H", img: "/organizing team/Sangavi.jpeg" },
-                { name: "Mr. S. Arunkumar ", role: "Assistant Professor", dept: "Electronics Engineering", img: "/organizing team/Arunkumar .jpeg" }
+                { name: "Ms. T. Malarvizhi", role: "Assistant Professor", dept: "Artificial Intelligence & Data Science", img: "/organizing team/Malarvizhi.png" },
+                { name: "Dr. M. Arunmozhi", role: "Associate Professor", dept: "Master of Business Administration", img: "/organizing team/Arunmozhi.jpeg" },
+                { name: "Ms. S. R. Sarvada", role: "Assistant Professor", dept: "Science & Humanities - English", img: "/organizing team/S.R.Sarvada.jpeg" },
+                { name: "Ms. V. Mohana Priya", role: "Assistant Professor", dept: "Science & Humanities - Mathematics", img: "/organizing team/Mohana-Priya .jpeg" },
+                { name: "Ms. Sangavi", role: "Assistant Professor", dept: "Science & Humanities - Mathematics", img: "/organizing team/Sangavi.jpeg" },
               ].map((m, idx, arr) => (
                 <motion.div
                   key={idx}
@@ -726,7 +767,7 @@ const HomePage = () => {
                   transition={{ delay: 0.3 }}
                   className="text-lg md:text-2xl font-medium leading-relaxed opacity-90 mb-0 text-slate-200"
                 >
-                  The Coimbatore Institute of Engineering and Technology (CIET), Coimbatore, Tamilnadu (An Autonomous institute) was established in 2001 by the Kovai Kalaimagal Educational Trust (KKET) to provide quality education in Engineering, Technology and Management. CIET is affiliated to Anna University, approved by AICTE, accredited with 'A' Grade by NAAC.
+                  The Coimbatore Institute of Engineering and Technology (CIET), Coimbatore, Tamil Nadu, is an autonomous institution established in 2001 by the Kovai Kalaimagal Educational Trust (KKET). The institute is dedicated to providing high-quality education in the fields of Engineering, Technology, and Management, fostering academic excellence and professional development. CIET is affiliated with Anna University, approved by AICTE, and accredited with an ‘A’ Grade by NAAC.
                 </motion.p>
               </div>
               <a
@@ -771,7 +812,7 @@ const HomePage = () => {
                   {pillar.icon}
                 </div>
                 <h3 className="text-2xl font-black mb-4 text-slate-900 tracking-tight">{pillar.title}</h3>
-                <p className="text-slate-500 text-base leading-relaxed font-medium">{pillar.desc}</p>
+                <p className="text-slate-500 text-base leading-relaxed font-medium text-justify">{pillar.desc}</p>
               </motion.div>
             ))}
           </div>

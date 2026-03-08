@@ -112,7 +112,7 @@ const Footer = () => {
 
       <div className="py-10 bg-slate-900 border-t border-white/5">
         <div className="w-full max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-sm text-slate-400 font-bold tracking-tight">&copy; 2026 International Conference CIETM. All rights reserved.</p>
+          <p className="text-sm text-slate-400 font-bold tracking-tight">&copy; 2026 National Conference CIETM. All rights reserved.</p>
           <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 text-white text-xs font-black shadow-xl">
             <Sparkles size={14} className="text-indigo-400" />
             <span className="uppercase tracking-widest">Innovation Powered</span>

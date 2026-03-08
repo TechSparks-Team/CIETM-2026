@@ -136,10 +136,10 @@ const HomePage = () => {
   ];
 
   const advisoryBoard = [
-    { name: "Dr. Gokul Shanmugan", affiliation: "Associate Professor and Head - EEE, Dean - Affiliations and Approvals", img: "/advisory/Gokul Shanmugan.jpeg" },
-    { name: "Dr. Elena Rossi", affiliation: "Research Director, CERN", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop" },
-    { name: "Prof. Sanjay Gupta", affiliation: "IIT Delhi", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400&h=400&fit=crop" },
-    { name: "Dr. Thomas Wright", affiliation: "Chief Scientist, IBM Research", img: "https://images.unsplash.com/photo-1548142813-c348350df52b?w=400&h=400&fit=crop" }
+    { name: "Dr. S. Gokul", affiliation: "Associate Professor and Head - EEE, Dean - Affiliations and Approvals", img: "/advisory/Gokul Shanmugan.jpeg" },
+    { name: "Dr. N. R. Deepa", affiliation: "Associate Professor and Head - IT", img: "/advisory/dheepa.jpeg" },
+    { name: "Dr. S. Priyadharshini", affiliation: "Associate Professor and Head - Management Studies", img: "/advisory/priyadharshini.jpg" },
+    { name: "Dr. K. Pushpalatha", affiliation: "Associate Professor and Head - CSE, Dean - Affiliations and Approvals", img: "/advisory/pushpalatha.png" },
   ];
 
   // Calculate duration based on total width to maintain constant velocity (80px/s)
@@ -632,7 +632,7 @@ const HomePage = () => {
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="mb-7 inline-block relative">
                     {p.img ? (
-                      <img src={p.img} alt={p.name} className="w-[440px] h-[340px] rounded-[20px] object-cover bg-slate-100 shadow-sm transition-transform duration-300 group-hover:scale-105" />
+                      <img src={p.img} alt={p.name} className="w-[440px] h-[340px] rounded-[20px] object-cover border-4 border-slate-50 bg-slate-100 shadow-sm transition-transform duration-300 group-hover:scale-105" />
                     ) : (
                       <div className="w-[140px] h-[140px] rounded-[20px] bg-slate-100 text-slate-500 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
                         <User size={36} strokeWidth={2} />
@@ -658,7 +658,7 @@ const HomePage = () => {
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="mb-7 inline-block relative">
                     {p.img ? (
-                      <img src={p.img} alt={p.name} className="w-[440px] h-[340px] rounded-[20px] object-cover bg-indigo-50 text-indigo-600 shadow-sm transition-transform duration-300 group-hover:scale-105" />
+                      <img src={p.img} alt={p.name} className="w-[440px] h-[340px] rounded-[20px] object-cover border-4 border-slate-50 bg-indigo-50 text-indigo-600 shadow-sm transition-transform duration-300 group-hover:scale-105" />
                     ) : (
                       <div className="w-[140px] h-[140px] rounded-[20px] bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
                         <User size={36} strokeWidth={2} />
@@ -674,8 +674,8 @@ const HomePage = () => {
             <h3 className="text-2xl font-bold text-slate-500 uppercase tracking-[0.2em] text-center mb-12 mt-20 flex items-center justify-center gap-6 before:content-[''] before:h-px before:w-[60px] before:bg-slate-300 after:content-[''] after:h-px after:w-[60px] after:bg-slate-300">Convenor</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-3xl mx-auto justify-center">
               {[
-                { name: "Dr. P. Magudeaswaran", role: "Head Of the Department - Civil", img: null },
-                { name: "Dr. V. Rajkumar", role: "Associate Professor - Mechanical", img: null }
+                { name: "Dr. P. Magudeaswaran", role: "Head Of the Department - Civil Engineering", img: "/convenor/magudeaswaran.jpg" },
+                { name: "Dr. V. Rajkumar", role: "Associate Professor - Mechanical Engineering", img: null }
               ].map((p, i) => (
                 <motion.div
                   key={i}
@@ -684,9 +684,13 @@ const HomePage = () => {
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="mb-7 inline-block relative">
-                    <div className="w-[140px] h-[140px] rounded-[20px] bg-blue-50 text-indigo-600 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
-                      <User size={36} strokeWidth={2} />
-                    </div>
+                    {p.img ? (
+                      <img src={p.img} alt={p.name} className="w-[240px] h-[240px] rounded-[20px] object-cover object-top border-4 border-slate-50 bg-blue-50 shadow-sm transition-transform duration-300 group-hover:scale-105" />
+                    ) : (
+                      <div className="w-[240px] h-[240px] rounded-[20px] bg-blue-50 text-indigo-600 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
+                        <User size={36} strokeWidth={2} />
+                      </div>
+                    )}
                   </div>
                   <h3 className="text-[1.35rem] font-bold text-slate-800 mb-2 leading-tight">{p.name}</h3>
                   <span className="text-sm font-semibold text-indigo-600 uppercase tracking-wider border-b-2 border-transparent group-hover:border-indigo-600 transition-colors pb-0.5 inline-block">{p.role}</span>
@@ -722,7 +726,7 @@ const HomePage = () => {
                       <img
                         src={m.img}
                         alt={m.name}
-                        className="w-full h-full rounded-[1.5rem] object-cover object-top border-4 border-slate-50 group-hover:border-indigo-100 shadow-md group-hover:shadow-xl transition-all duration-500 group-hover:scale-105"
+                        className="w-[200px] h-[170px] rounded-[1.5rem] object-cover object-top border-4 border-slate-50 group-hover:border-indigo-100 shadow-md group-hover:shadow-xl transition-all duration-500 group-hover:scale-105"
                       />
                     ) : (
                       <div className="w-full h-full bg-slate-50 text-slate-400 rounded-[1.5rem] flex items-center justify-center border-4 border-slate-50 group-hover:bg-indigo-50 group-hover:text-indigo-500 shadow-md group-hover:shadow-xl transition-all duration-500 group-hover:scale-105">

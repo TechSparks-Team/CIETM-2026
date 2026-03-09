@@ -12,7 +12,9 @@ const {
     updateRegistrationStatus,
     downloadAllPapersZip,
     verifyEntry,
-    updateProfilePicture
+    updateProfilePicture,
+    requestReupload,
+    handleReuploadRequest
 } = require('../controllers/registrationController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { upload, uploadProfilePic } = require('../config/cloudinary');
@@ -29,6 +31,8 @@ router.put('/:id/review', protect, admin, reviewPaper);
 router.put('/:id/status', protect, admin, updateRegistrationStatus);
 router.post('/update-paper', protect, updatePaper);
 router.put('/profile-picture', protect, updateProfilePicture);
+router.post('/:id/request-reupload', protect, requestReupload);
+router.post('/:id/handle-reupload-request', protect, admin, handleReuploadRequest);
 
 // File upload route
 router.post('/upload', protect, upload.single('paper'), (req, res) => {

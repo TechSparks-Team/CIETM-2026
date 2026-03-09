@@ -57,7 +57,12 @@ const registrationSchema = new mongoose.Schema({
             enum: ['Draft', 'Submitted', 'Under Review', 'Accepted', 'Rejected'],
             default: 'Draft'
         },
-        reviewerComments: String
+        reviewerComments: String,
+        reuploadRequestStatus: {
+            type: String,
+            enum: ['None', 'Pending', 'Approved', 'Rejected'],
+            default: 'None'
+        }
     },
     status: {
         type: String,

@@ -260,6 +260,11 @@ const updatePaper = async (req, res) => {
 
         const wasRejected = registration.status === 'Rejected';
 
+        // Enforce re-upload request workflow if rejected
+        if (wasRejected && registration.paperDetails.reuploadRequestStatus !== 'Approved') {
+            return res.status(403).json({ message: 'You must request and receive approval to re-upload a rejected manuscript.' });
+        }
+
         // If there's an existing file, and the new file has a different public ID (e.g., different extension), delete the old one
         const oldPublicId = registration.paperDetails.publicId;
         if (oldPublicId && oldPublicId !== publicId) {
@@ -275,6 +280,11 @@ const updatePaper = async (req, res) => {
         registration.paperDetails.publicId = publicId;
         registration.paperDetails.resourceType = resourceType;
         registration.paperDetails.originalName = originalName;
+
+        if (registration.paperDetails.reuploadRequestStatus === 'Approved') {
+            registration.paperDetails.reuploadRequestStatus = 'None';
+        }
+
         registration.updatedAt = Date.now();
 
         if (wasRejected) {
@@ -289,8 +299,8 @@ const updatePaper = async (req, res) => {
             for (const admin of admins) {
                 await createNotification(
                     admin._id,
-                    'New Manuscript Upload',
-                    `Author ${req.user.name} has re-uploaded a new manuscript after being rejected.`,
+                    'Revised Manuscript Upload',
+                    `Author ${req.user.name} has uploaded a revised manuscript for "${registration.paperDetails.title}".`,
                     'info',
                     '/admin'
                 );
@@ -335,6 +345,91 @@ const getAdminAnalytics = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Request paper re-upload after rejection
+// @route   POST /api/registrations/:id/request-reupload
+// @access  Private
+const requestReupload = async (req, res) => {
+    try {
+        const registration = await Registration.findById(req.params.id).populate('userId', 'name email');
+        
+        if (!registration || registration.userId._id.toString() !== req.user._id.toString()) {
+            return res.status(404).json({ message: 'Registration not found' });
+        }
+
+        if (registration.status !== 'Rejected') {
+            return res.status(400).json({ message: 'Only rejected papers can request re-upload.' });
+        }
+
+        registration.paperDetails.reuploadRequestStatus = 'Pending';
+        registration.updatedAt = Date.now();
+        await registration.save();
+
+        const admins = await User.find({ role: 'admin' });
+        for (const admin of admins) {
+            await createNotification(
+                admin._id,
+                'Re-upload Request',
+                `Author ${req.user.name} has requested to re-upload their rejected manuscript.`,
+                'info',
+                '/admin'
+            );
+        }
+
+        res.json(registration);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+// @desc    Handle paper re-upload request (Admin)
+// @route   POST /api/registrations/:id/handle-reupload-request
+// @access  Admin
+const handleReuploadRequest = async (req, res) => {
+    const { action } = req.body; // 'Approve' or 'Reject'
+
+    try {
+        const registration = await Registration.findById(req.params.id).populate('userId', 'email name');
+        
+        if (!registration) {
+            return res.status(404).json({ message: 'Registration not found' });
+        }
+
+        if (registration.paperDetails.reuploadRequestStatus !== 'Pending') {
+             return res.status(400).json({ message: 'No pending re-upload request.' });
+        }
+
+        registration.paperDetails.reuploadRequestStatus = action === 'Approve' ? 'Approved' : 'Rejected';
+        registration.updatedAt = Date.now();
+        await registration.save();
+
+        await createNotification(
+            registration.userId._id,
+            `Re-upload Request ${action}d`,
+            `Your request to re-upload the manuscript has been ${action.toLowerCase()} by an admin.`,
+            action === 'Approve' ? 'success' : 'error',
+            '/dashboard'
+        );
+
+         try {
+            await sendEmail({
+                email: registration.userId.email,
+                subject: `Re-upload Request ${action}d`,
+                message: `
+          <h1>Hello ${registration.userId.name},</h1>
+          <p>Your request to re-upload your rejected manuscript titled "<strong>${registration.paperDetails.title}</strong>" has been <strong>${action.toLowerCase()}</strong>.</p>
+          ${action === 'Approve' ? '<p>You may now log in to your dashboard to upload the revised manuscript.</p>' : ''}
+        `
+            });
+        } catch (err) {
+            console.error("Email failed to send", err);
+        }
+
+        res.json(registration);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
 };
 
@@ -497,5 +592,7 @@ module.exports = {
     updateRegistrationStatus,
     downloadAllPapersZip,
     verifyEntry,
-    updateProfilePicture
+    updateProfilePicture,
+    requestReupload,
+    handleReuploadRequest
 };

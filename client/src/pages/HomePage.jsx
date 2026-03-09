@@ -139,7 +139,11 @@ const HomePage = () => {
     { name: "Dr. S. Gokul", affiliation: "Associate Professor and Head - EEE, Dean - Affiliations and Approvals", img: "/advisory/Gokul Shanmugan.jpeg" },
     { name: "Dr. N. R. Deepa", affiliation: "Associate Professor and Head - IT", img: "/advisory/dheepa.jpeg" },
     { name: "Dr. S. Priyadharshini", affiliation: "Associate Professor and Head - Management Studies", img: "/advisory/priyadharshini.jpg" },
-    { name: "Dr. K. Pushpalatha", affiliation: "Associate Professor and Head - CSE, Dean - Affiliations and Approvals", img: "/advisory/pushpalatha.png" },
+    { name: "Dr. K. Pushpalatha", affiliation: "Dean, Associate Professor and Head - CSE", img: "/advisory/pushpalatha.png" },
+    { name: "Dr. A. Umaamaheshvari", affiliation: "Associate Professor and Head - ECE", img: "/advisory/umaamaheshvari.png" },
+    { name: "Dr.N.Mohan Raj", affiliation: "Professor & Head - MCT", img: "/advisory/mohan.jpeg" },
+    { name: "Mrs. K. Velumani", affiliation: "Dean, Head - S&H", img: "/advisory/velumani.png" },
+    { name: "Dr. E. Gomathi", affiliation: "Associate Professor & Head - AI&DS", img: "/advisory/gomathi.jpeg" },
   ];
 
   // Calculate duration based on total width to maintain constant velocity (80px/s)
@@ -187,8 +191,8 @@ const HomePage = () => {
             </p>
 
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-6 tracking-normal text-white drop-shadow-2xl max-w-4xl">
-              Contemporary Improvements in <br className="hidden md:block" />
-              Engineering Technology & <br className="hidden md:block" />
+              Contemporary Innovations in <br className="hidden md:block" />
+              Engineering, Technology & <br className="hidden md:block" />
               Management - <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-violet-600 font-black">CIETM-2026</span>
             </h1>
 

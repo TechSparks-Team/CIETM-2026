@@ -351,6 +351,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleReuploadAction = async (id, action) => {
+    const loadingToast = toast.loading(`${action}ing re-upload request...`);
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.post(`/api/registrations/${id}/handle-reupload-request`, { action }, config);
+      toast.success(`Request ${action.toLowerCase()}d successfully`, { id: loadingToast });
+      fetchAllData();
+    } catch (error) {
+      toast.error(`Failed to ${action.toLowerCase()} request`, { id: loadingToast });
+    }
+  };
+
   const filteredData = useMemo(() => {
     return registrations.filter(reg => {
       const matchesFilter = filter === 'All' || reg.status === filter;
@@ -433,6 +445,7 @@ const AdminDashboard = () => {
               { id: 'submissions', label: 'Paper Submissions', icon: FileCheck },
               { id: 'users', label: 'User Directory', icon: Users },
               { id: 'verifier', label: 'On-site Entry', icon: ScanLine },
+              { id: 'updates', label: 'Updates', icon: Bell },
               { id: 'analytics', label: 'Growth Insights', icon: TrendingUp },
               { id: 'settings', label: 'System Settings', icon: Settings },
             ].map(item => (
@@ -995,6 +1008,55 @@ const AdminDashboard = () => {
                     )}
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'updates' && (
+              <motion.div
+                key="updates"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-4xl mx-auto space-y-6"
+              >
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-800">Pending Updates</h2>
+                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Re-upload requests from authors</p>
+                  </div>
+                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
+                    <Bell size={24} />
+                  </div>
+                </div>
+
+                {registrations.filter(r => r.paperDetails?.reuploadRequestStatus === 'Pending').length === 0 ? (
+                  <div className="bg-white rounded-[2rem] border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
+                     <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-4">
+                       <CheckCircle size={32} />
+                     </div>
+                     <h3 className="text-lg font-black text-slate-700">All caught up!</h3>
+                     <p className="text-sm font-bold text-slate-400 mt-2">There are no pending re-upload requests.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {registrations.filter(r => r.paperDetails?.reuploadRequestStatus === 'Pending').map(reg => (
+                      <div key={reg._id} className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col sm:flex-row justify-between shrink-0 gap-4">
+                        <div>
+                           <div className="flex items-center gap-2 mb-2">
+                             <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest rounded-md border border-red-100">Rejected</span>
+                             <span className="text-xs font-bold text-slate-400">ID: ...{reg._id.slice(-6).toUpperCase()}</span>
+                           </div>
+                           <h4 className="text-lg font-black text-slate-800 leading-tight mb-1">{reg.paperDetails?.title || 'Untitled'}</h4>
+                           <p className="text-sm font-bold text-slate-500">Author: {reg.personalDetails?.name}</p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-3">
+                           <button onClick={() => handleReuploadAction(reg._id, 'Reject')} className="w-full sm:w-auto px-6 py-3 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 font-bold text-xs uppercase tracking-widest rounded-xl transition-colors border border-slate-200">Deny</button>
+                           <button onClick={() => handleReuploadAction(reg._id, 'Approve')} className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-100 transition-colors">Approve Request</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 

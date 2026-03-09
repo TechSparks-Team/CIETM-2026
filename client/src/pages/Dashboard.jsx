@@ -135,6 +135,23 @@ const Dashboard = () => {
     window.open(`/api/registrations/download/${registration._id}?token=${user.token}`, '_blank');
   };
 
+  const handleRequestReupload = async () => {
+    if (!registration) return;
+    const confirmRequest = window.confirm("Are you sure you want to request a re-upload for this rejected manuscript? This will notify the admin.");
+    if (!confirmRequest) return;
+
+    try {
+      await axios.post(`/api/registrations/${registration._id}/request-reupload`, {}, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      toast.success("Re-upload request sent successfully! An admin will review it soon.");
+      fetchRegistration();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to request re-upload.");
+      console.error("Request re-upload error", error);
+    }
+  };
+
   const handleFullPaperUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -395,6 +412,17 @@ const Dashboard = () => {
                   <p className="font-mono text-xl font-black text-slate-700 tracking-wider">#{registration?._id?.slice(-4).toUpperCase() || '----'}</p>
                 </div>
               </div>
+
+              {registration?.paperDetails?.reviewerComments && (
+                <div className={`mt-2 mb-2 p-4 rounded-2xl border ${registration.status === 'Accepted' ? 'bg-blue-50/50 border-blue-100' : registration.status === 'Rejected' ? 'bg-red-50/50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+                  <h3 className={`text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-2 ${registration.status === 'Accepted' ? 'text-blue-500' : registration.status === 'Rejected' ? 'text-red-500' : 'text-slate-400'}`}>
+                    <FileText size={12} /> Admin Remarks
+                  </h3>
+                  <p className={`text-sm font-medium ${registration.status === 'Accepted' ? 'text-blue-800' : registration.status === 'Rejected' ? 'text-red-800' : 'text-slate-700'}`}>
+                    {registration.paperDetails.reviewerComments}
+                  </p>
+                </div>
+              )}
 
               <div>
                 {/* Visual Progress Bar */}
@@ -1040,6 +1068,16 @@ const Dashboard = () => {
                     <p>{registration?.paperDetails?.abstract || 'No abstract content available at this moment.'}</p>
                   </div>
                 </div>
+                {registration?.paperDetails?.reviewerComments && (
+                  <div className={`py-6 border-t ${registration.status === 'Accepted' ? 'border-blue-50' : registration.status === 'Rejected' ? 'border-red-50' : 'border-slate-50'}`}>
+                    <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] mb-4 ${registration.status === 'Accepted' ? 'text-blue-500' : registration.status === 'Rejected' ? 'text-red-500' : 'text-slate-400'}`}>
+                      Admin Remarks
+                    </h3>
+                    <div className={`p-4 rounded-2xl border ${registration.status === 'Accepted' ? 'bg-blue-50/50 border-blue-100 text-blue-800' : registration.status === 'Rejected' ? 'bg-red-50/50 border-red-100 text-red-800' : 'bg-slate-50 border-slate-100 text-slate-700'} text-sm font-medium leading-relaxed`}>
+                      <p>{registration.paperDetails.reviewerComments}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Principal Author Details */}
@@ -1170,7 +1208,22 @@ const Dashboard = () => {
 
         {registration?.status !== 'Accepted' && (
           <div className="flex flex-col gap-4">
-            {!registration?.paperDetails?.fileUrl ? (
+            {registration?.status === 'Rejected' && registration?.paperDetails?.reuploadRequestStatus !== 'Approved' ? (
+              <div className="p-6 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center justify-center text-center">
+                <p className="text-sm font-bold text-red-800 mb-4">
+                  Your manuscript was rejected. You must request approval to re-upload a revised version.
+                </p>
+                {registration?.paperDetails?.reuploadRequestStatus === 'Pending' ? (
+                  <button className="w-full sm:w-auto px-6 py-3 bg-red-200 text-red-700 font-bold rounded-xl pointer-events-none">
+                    Re-upload Request Pending
+                  </button>
+                ) : (
+                  <button onClick={handleRequestReupload} className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-200">
+                    Request Re-upload
+                  </button>
+                )}
+              </div>
+            ) : !registration?.paperDetails?.fileUrl ? (
               <div className="relative">
                 <input
                   type="file"

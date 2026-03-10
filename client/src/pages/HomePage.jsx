@@ -48,6 +48,21 @@ const CountdownTimer = ({ targetDate }) => {
   );
 };
 
+const SpeakerCard = ({ s, width = "w-[220px]" }) => (
+  <motion.div
+    whileHover={{ y: -5 }}
+    className={`${width} shrink-0 bg-white rounded-[20px] overflow-hidden border border-slate-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_-12px_rgba(99,102,241,0.2)] transition-all duration-500 group/card h-[310px] flex flex-col mx-auto`}
+  >
+    <div className="relative h-[200px] overflow-hidden bg-slate-100 flex items-center justify-center">
+      <img src={s.img} alt={s.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" />
+    </div>
+    <div className="p-4 text-center flex flex-col items-center justify-center flex-1">
+      <h3 className="text-[1.05rem] font-bold mb-1 text-slate-900 leading-tight">{s.name}</h3>
+      <span className="block font-bold text-slate-500 text-[0.7rem] leading-snug">{s.affiliation}</span>
+    </div>
+  </motion.div>
+);
+
 const HomePage = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [themePage, setThemePage] = useState(0);
@@ -120,32 +135,18 @@ const HomePage = () => {
 
   const speakers = [
     {
-      name: "Dr. Alexandra Vane",
+      name: "Dr. M. Omkumar",
       role: "Keynote Speaker",
-      affiliation: "Senior Scientist, Stanford Research Lab",
-      bio: "Expert in Distributed Systems and Algorithmic Fairness. Has published over 200 papers in top-tier journals.",
-      img: "https://i.pravatar.cc/400?img=11"
+      affiliation: "Professor - Manufacturing Engineering, Anna University, Chennai.",
+      bio: "Academician with expertise in manufacturing technologies and industrial innovations.",
+      img: "/speakers/omkumar.jpeg"
     },
     {
-      name: "Prof. Marcus Thorne",
-      role: "Invited Speaker",
-      affiliation: "Head of AI, MIT CSAIL",
-      bio: "Pioneer in Generative AI architectures and transformer-based neural networks for climate modeling.",
-      img: "https://i.pravatar.cc/400?img=12"
-    },
-    {
-      name: "Dr. Sarah Jenkins",
-      role: "Industry Expert",
-      affiliation: "VP of Engineering, CloudFlare Inc.",
-      bio: "Driving the future of edge computing and global secure networks. 15+ years of experience in infrastructure-as-code.",
-      img: "https://i.pravatar.cc/400?img=13"
-    },
-    {
-      name: "Prof. Li Wei",
-      role: "Academic Speaker",
-      affiliation: "Director of Research, Tsinghua University",
-      bio: "Specializing in Sustainable Computing and Green Energy Management for Smart Cities.",
-      img: "https://i.pravatar.cc/400?img=14"
+      name: "Mr. T. V. Arjunan",
+      role: "Keynote Speaker",
+      affiliation: "Professor - Mechanical Engineering, Guru Ghasidas Vishwavidyalaya, Bilaspur.",
+      bio: "Researcher focusing on advanced mechanical systems and thermal engineering applications.",
+      img: "/speakers/arjunan.jpeg"
     }
   ];
 
@@ -518,109 +519,6 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Speakers Section */}
-      <section id="speakers" className="py-12 md:py-20 bg-white">
-        <div className="w-full max-w-7xl mx-auto px-6">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <span className="inline-block px-5 py-2 rounded-full bg-indigo-50 text-indigo-600 font-extrabold text-xs tracking-widest uppercase mb-5">Experts</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900 tracking-tight">Keynote <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Speakers</span></h2>
-            <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Meet the visionary leaders sharing their insights at CIETM 2026.</p>
-          </div>
-
-          <div className="relative max-w-6xl mx-auto py-6 group overflow-hidden">
-            {/* Fading Edges Mask */}
-            <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
-            <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
-
-            <div
-              className="flex gap-8 hover:[animation-play-state:paused]"
-              style={{
-                animation: `scroll ${duration}s linear infinite`,
-                width: 'max-content'
-              }}
-            >
-              {/* 3 sets for smooth infinity scroll */}
-              {[...speakers, ...speakers, ...speakers].map((s, i) => (
-                <motion.div
-                  key={i}
-                  whileHover={{ y: -5 }}
-                  className="w-[220px] shrink-0 bg-white rounded-[20px] overflow-hidden border border-slate-50 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_-12px_rgba(99,102,241,0.2)] transition-all duration-500 group/card h-full flex flex-col"
-                >
-                  <div className="relative h-[200px] overflow-hidden">
-                    <img src={s.img} alt={s.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" />
-                    <div className="absolute inset-x-0 bottom-[-60px] bg-slate-900/85 backdrop-blur-md py-4 flex justify-center gap-6 group-hover/card:bottom-0 transition-all duration-400 delay-75">
-                      <a href="#" className="text-white hover:text-indigo-400 transition-colors"><Linkedin size={18} /></a>
-                      <a href="#" className="text-white hover:text-indigo-400 transition-colors"><Twitter size={18} /></a>
-                      <a href="#" className="text-white hover:text-indigo-400 transition-colors"><Globe size={18} /></a>
-                    </div>
-                  </div>
-                  <div className="p-5 text-center flex flex-col flex-1">
-                    <div className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[0.65rem] font-extrabold uppercase mb-3 self-center">{s.role}</div>
-                    <h3 className="text-lg font-bold mb-1 text-slate-900">{s.name}</h3>
-                    <span className="block font-bold text-slate-400 text-xs mb-3">{s.affiliation}</span>
-                    <p className="text-sm text-slate-500 leading-snug mt-auto">{s.bio}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-          <style>{`
-            @keyframes scroll {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(calc(-100% / 3)); }
-            }
-          `}</style>
-        </div>
-      </section>
-
-      {/* Advisory Board Section */}
-      <section id="advisory-board" className="py-12 md:py-20 bg-slate-50">
-        <div className="w-full max-w-7xl mx-auto px-6">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <span className="inline-block px-5 py-2 rounded-full bg-indigo-50 text-indigo-600 font-extrabold text-xs tracking-widest uppercase mb-5">Guidance</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900 tracking-tight">Advisory <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Board</span></h2>
-            <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Distinguished global leaders providing expert guidance for the conference.</p>
-          </div>
-
-          <div className="relative max-w-6xl mx-auto py-6 group overflow-hidden">
-            {/* Fading Edges Mask */}
-            <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
-            <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
-
-            <div
-              className="flex gap-8 hover:[animation-play-state:paused]"
-              style={{
-                animation: `board-scroll ${advisoryDuration}s linear infinite`,
-                width: 'max-content'
-              }}
-            >
-              {/* 3 sets for smooth infinity scroll */}
-              {[...advisoryBoard, ...advisoryBoard, ...advisoryBoard].map((item, i) => (
-                <motion.div
-                  key={i}
-                  whileHover={{ y: -5 }}
-                  className="w-[220px] shrink-0 bg-white rounded-[20px] overflow-hidden border border-slate-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_-12px_rgba(99,102,241,0.2)] transition-all duration-500 group/card h-full flex flex-col"
-                >
-                  <div className="relative h-[200px] overflow-hidden bg-slate-100">
-                    <img src={item.img} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" />
-                  </div>
-                  <div className="p-5 text-center flex flex-col flex-1">
-                    <h3 className="text-lg font-bold mb-1 text-slate-900">{item.name}</h3>
-                    <span className="block font-bold text-slate-400 text-xs mt-auto">{item.affiliation}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-          <style>{`
-            @keyframes board-scroll {
-                0% { transform: translateX(calc(-100% / 3)); }
-                100% { transform: translateX(0); }
-            }
-          `}</style>
-        </div>
-      </section>
-
       {/* Patrons Section */}
       <section id="patrons" className="pt-12 pb-16 md:pt-16 md:pb-24 relative bg-white overflow-hidden">
         {/* Mesh Backgrounds */}
@@ -717,8 +615,115 @@ const HomePage = () => {
               ))}
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* Speakers Section */}
+      <section id="speakers" className="py-12 md:py-20 bg-white">
+        <div className="w-full max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <span className="inline-block px-5 py-2 rounded-full bg-indigo-50 text-indigo-600 font-extrabold text-xs tracking-widest uppercase mb-5">Experts</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900 tracking-tight">Keynote <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Speakers</span></h2>
+            <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Meet the visionary leaders sharing their insights at CIETM 2026.</p>
+          </div>
+
+          <div className="relative max-w-6xl mx-auto py-6 group overflow-hidden">
+            {speakers.length > 4 ? (
+              <>
+                {/* Fading Edges Mask */}
+                <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+                <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+
+                <div
+                  className="flex gap-8 hover:[animation-play-state:paused]"
+                  style={{
+                    animation: `scroll ${duration}s linear infinite`,
+                    width: 'max-content'
+                  }}
+                >
+                  {/* 3 sets for smooth infinity scroll */}
+                  {[...speakers, ...speakers, ...speakers].map((s, i) => (
+                    <SpeakerCard key={i} s={s} width="w-[220px] shrink-0" />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className={`grid gap-6 justify-center items-stretch mx-auto ${
+                speakers.length === 1 ? 'max-w-md grid-cols-1' :
+                speakers.length === 2 ? 'max-w-2xl grid-cols-1 sm:grid-cols-2' :
+                speakers.length === 3 ? 'max-w-3xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+                'max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+              }`}>
+                {speakers.map((s, i) => (
+                  <SpeakerCard key={i} s={s} />
+                ))}
+              </div>
+            )}
+          </div>
+          <style>{`
+            @keyframes scroll {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(calc(-100% / 3)); }
+            }
+          `}</style>
+        </div>
+      </section>
+
+      {/* Advisory Board Section */}
+      <section id="advisory-board" className="py-12 md:py-20 bg-slate-50">
+        <div className="w-full max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <span className="inline-block px-5 py-2 rounded-full bg-indigo-50 text-indigo-600 font-extrabold text-xs tracking-widest uppercase mb-5">Guidance</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900 tracking-tight">Advisory <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Board</span></h2>
+            <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Distinguished global leaders providing expert guidance for the conference.</p>
+          </div>
+
+          <div className="relative max-w-6xl mx-auto py-6 group overflow-hidden">
+            {/* Fading Edges Mask */}
+            <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
+
+            <div
+              className="flex gap-8 hover:[animation-play-state:paused]"
+              style={{
+                animation: `board-scroll ${advisoryDuration}s linear infinite`,
+                width: 'max-content'
+              }}
+            >
+              {/* 3 sets for smooth infinity scroll */}
+              {[...advisoryBoard, ...advisoryBoard, ...advisoryBoard].map((item, i) => (
+                <motion.div
+                  key={i}
+                  whileHover={{ y: -5 }}
+                  className="w-[220px] shrink-0 bg-white rounded-[20px] overflow-hidden border border-slate-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_-12px_rgba(99,102,241,0.2)] transition-all duration-500 group/card h-[310px] flex flex-col"
+                >
+                  <div className="relative h-[200px] overflow-hidden bg-slate-100">
+                    <img src={item.img} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" />
+                  </div>
+                  <div className="p-4 text-center flex flex-col items-center justify-center flex-1">
+                    <h3 className="text-[1.05rem] font-bold mb-1 text-slate-900 leading-tight">{item.name}</h3>
+                    <span className="block font-bold text-slate-500 text-[0.7rem] leading-snug">{item.affiliation}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+          <style>{`
+            @keyframes board-scroll {
+                0% { transform: translateX(calc(-100% / 3)); }
+                100% { transform: translateX(0); }
+            }
+          `}</style>
+        </div>
+      </section>
+
+      {/* Organizing Team Section */}
+      <section id='organizing-team' className='py-12 md:py-20 bg-white'>
+        <div className='w-full max-w-7xl mx-auto px-6'>
+          <div className='mt-0'>
             <h3 className="text-xl font-bold text-slate-400 uppercase tracking-[0.2em] text-center mb-12 mt-24 flex items-center justify-center gap-6 before:content-[''] before:h-px before:w-[40px] before:bg-slate-200 after:content-[''] after:h-px after:w-[40px] after:bg-slate-200">Organizing Team</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-8 max-w-6xl mx-auto px-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto px-4">
               {[
                 { name: "Mr. G. R. Seenivasan", role: "Assistant Professor", dept: "Civil Engineering", img: "/organizing team/G R Seenivasan.jpeg" },
                 { name: "Ms. N. Mithraa", role: "Assistant Professor", dept: "Information Technology", img: "/organizing team/Nmithra.jpeg" },
@@ -738,17 +743,17 @@ const HomePage = () => {
                 <motion.div
                   key={idx}
                   whileHover={{ y: -8 }}
-                  className={`bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-indigo-200 transition-all duration-500 flex flex-col items-center text-center group h-full col-span-1 lg:col-span-2 ${arr.length % 3 === 2 && idx === arr.length - 2 ? 'lg:col-start-2' : arr.length % 3 === 1 && idx === arr.length - 1 ? 'lg:col-start-3' : ''}`}
+                  className={`bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-indigo-200 transition-all duration-500 flex flex-col items-center text-center group h-full col-span-1 ${arr.length % 4 === 2 && idx === arr.length - 2 ? 'lg:col-start-2' : ''}`}
                 >
-                  <div className="w-32 h-40 md:w-36 md:h-48 mb-6 relative">
+                  <div className="w-36 h-44 md:w-40 md:h-52 mb-5 relative">
                     {m.img ? (
                       <img
                         src={m.img}
                         alt={m.name}
-                        className="w-[200px] h-[170px] rounded-[1.5rem] object-cover object-top border-4 border-slate-50 group-hover:border-indigo-100 shadow-md group-hover:shadow-xl transition-all duration-500 group-hover:scale-105"
+                        className="w-full h-full rounded-[1.25rem] object-cover object-top border-4 border-slate-50 group-hover:border-indigo-100 shadow-md group-hover:shadow-xl transition-all duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="w-full h-full bg-slate-50 text-slate-400 rounded-[1.5rem] flex items-center justify-center border-4 border-slate-50 group-hover:bg-indigo-50 group-hover:text-indigo-500 shadow-md group-hover:shadow-xl transition-all duration-500 group-hover:scale-105">
+                      <div className="w-full h-full bg-slate-50 text-slate-400 rounded-[1.25rem] flex items-center justify-center border-4 border-slate-50 group-hover:bg-indigo-50 group-hover:text-indigo-500 shadow-md group-hover:shadow-xl transition-all duration-500 group-hover:scale-105">
                         <User size={48} />
                       </div>
                     )}

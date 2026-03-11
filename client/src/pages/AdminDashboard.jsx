@@ -106,7 +106,7 @@ const AdminDashboard = () => {
   const [settings, setSettings] = useState(null);
   const [users, setUsers] = useState([]);
   const [broadcast, setBroadcast] = useState({ title: '', message: '', type: 'info' });
-  const [newAuthor, setNewAuthor] = useState({ name: '', email: '', phone: '', password: '' });
+  const [newAuthor, setNewAuthor] = useState({ name: '', email: '', phone: '', password: '', role: 'author' });
   const [isCreatingAuthor, setIsCreatingAuthor] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
@@ -227,8 +227,8 @@ const AdminDashboard = () => {
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
       await axios.post('/api/auth/admin/create-user', newAuthor, config);
 
-      toast.success("Author account created successfully!", { id: loadingToast });
-      setNewAuthor({ name: '', email: '', phone: '', password: '' });
+      toast.success("Account created successfully!", { id: loadingToast });
+      setNewAuthor({ name: '', email: '', phone: '', password: '', role: 'author' });
       setIsCreateModalOpen(false); // Close the modal on success
       // Refresh the users list
       const usersRes = await axios.get('/api/auth/users', config);
@@ -314,6 +314,20 @@ const AdminDashboard = () => {
       toast.success(res.data.message || "Cloudinary purged successfully", { id: loadingToast });
     } catch (error) {
       toast.error("Cloudinary purge failed", { id: loadingToast });
+    }
+  };
+
+  const handleRoleUpdate = async (userId, newRole) => {
+    if (userId === user._id) return toast.error("You cannot change your own role.");
+    
+    const loadingToast = toast.loading(`Updating member access to ${newRole}...`);
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.put(`/api/auth/users/${userId}/role`, { role: newRole }, config);
+      toast.success('Institutional permissions updated!', { id: loadingToast });
+      fetchAllData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update account credentials', { id: loadingToast });
     }
   };
 
@@ -827,9 +841,22 @@ const AdminDashboard = () => {
                               <p className="text-[10px] font-bold text-slate-400 mt-0.5">{u.phone || 'No phone provided'}</p>
                             </td>
                             <td className="px-8 py-6">
-                              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${u.role === 'admin' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                                {u.role}
-                              </span>
+                              <select
+                                value={u.role}
+                                disabled={u._id === user._id}
+                                onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
+                                className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border focus:outline-none transition-all cursor-pointer ${
+                                  u.role === 'admin' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 
+                                  u.role === 'chair' ? 'bg-purple-50 border-purple-100 text-purple-600' :
+                                  u.role === 'reviewer' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                                  'bg-slate-50 border-slate-100 text-slate-400'
+                                }`}
+                              >
+                                <option value="author">Author</option>
+                                <option value="reviewer">Reviewer</option>
+                                <option value="chair">Chair</option>
+                                <option value="admin">Admin</option>
+                              </select>
                             </td>
                             <td className="px-8 py-6 text-xs font-bold text-slate-500">
                               {new Date(u.createdAt).toLocaleDateString()}
@@ -1679,9 +1706,9 @@ const AdminDashboard = () => {
               <div className="flex justify-between items-start mb-8">
                 <div>
                   <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                    <UserPlus className="text-emerald-500" /> Create Author
+                    <UserPlus className="text-emerald-500" /> Administrative Provisioning
                   </h3>
-                  <p className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">Directly verify & add user</p>
+                  <p className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">Directly add verified staff or authors</p>
                 </div>
                 <button onClick={() => setIsCreateModalOpen(false)} className="p-2 bg-slate-50 text-slate-400 hover:text-slate-800 rounded-full transition-colors">
                   <X size={20} />
@@ -1713,16 +1740,29 @@ const AdminDashboard = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Phone Number</label>
                     <input
                       type="tel"
-                      placeholder="+1 234 567 8900"
+                      placeholder="+91..."
                       value={newAuthor.phone}
                       onChange={(e) => setNewAuthor({ ...newAuthor, phone: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                     />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">System Role *</label>
+                    <select
+                      value={newAuthor.role}
+                      onChange={(e) => setNewAuthor({ ...newAuthor, role: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all appearance-none"
+                    >
+                      <option value="author">Author (Attendee)</option>
+                      <option value="reviewer">Reviewer (Expert)</option>
+                      <option value="chair">Chair / Editor (Oversight)</option>
+                      <option value="admin">Administrator</option>
+                    </select>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Initial Password *</label>
@@ -1747,7 +1787,7 @@ const AdminDashboard = () => {
                   disabled={isCreatingAuthor}
                   className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-emerald-100 hover:-translate-y-1 transition-all disabled:opacity-50"
                 >
-                  {isCreatingAuthor ? 'Creating Account...' : 'Create Verified Author'}
+                  {isCreatingAuthor ? 'Creating Account...' : 'Create Verified Account'}
                 </button>
               </form>
             </motion.div>

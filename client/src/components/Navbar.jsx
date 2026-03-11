@@ -106,6 +106,15 @@ const Navbar = () => {
     { name: 'About College', href: '#about' },
     { name: 'Developers', href: '#developers' }
   ];
+  const getDashboardLink = () => {
+    if (!user) return '/login';
+    switch (user.role) {
+      case 'admin': return '/admin/dashboard';
+      case 'chair': return '/chair/dashboard';
+      case 'reviewer': return '/reviewer/dashboard';
+      default: return '/dashboard';
+    }
+  };
 
   return (
     <motion.nav 
@@ -176,7 +185,7 @@ const Navbar = () => {
             {user ? (
               <div className="flex items-center gap-3">
                 <Link 
-                  to={user.role === 'admin' ? '/admin/dashboard' : '/dashboard'} 
+                  to={getDashboardLink()} 
                   className={`btn border-2 px-5 py-2 text-[0.7rem] uppercase tracking-widest font-black ${buttonBorderClass} transition-all duration-300 hover:translate-y-[-2px] hover:shadow-lg`}
                 >
                   Dashboard
@@ -256,7 +265,7 @@ const Navbar = () => {
                 {user ? (
                   <>
                     <Link 
-                      to={user.role === 'admin' ? '/admin/dashboard' : '/dashboard'} 
+                      to={getDashboardLink()} 
                       className="w-full bg-indigo-600 text-white py-3.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm shadow-md shadow-indigo-100"
                       onClick={() => setIsOpen(false)}
                     >

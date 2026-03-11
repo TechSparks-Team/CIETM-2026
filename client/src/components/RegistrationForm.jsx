@@ -32,6 +32,7 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
     track: 'CIDT',
     password: '',
     confirmPassword: '',
+    role: 'author', // Default role
     agreedToTerms: false
   });
 
@@ -263,7 +264,7 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
           email: formData.email,
           password: formData.password,
           phone: formData.mobile,
-          role: 'author'
+          role: formData.role
         });
 
         setShowVerification(true);
@@ -326,16 +327,18 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
   const prevStep = () => setStep(step - 1);
 
   const handleSkip = async () => {
-    // Skip does NOT validate, just saves draft and moves next
+    // Skip does NOT validate, just saves draft and moves to dashboard
     setLoading(true);
     try {
-      await handleSaveDraft();
-      setStep(step + 1);
+      if (user) {
+        await handleSaveDraft();
+      }
+      sessionStorage.removeItem('isRegistering');
+      navigate('/dashboard');
     } catch (error) {
       console.error("Skip failed", error);
-      // Even if save fails, move next? Maybe better to stay or warn. 
-      // For now, let's just move next to not block user.
-      setStep(step + 1);
+      // Even if save fails, move to dashboard to not block user.
+      navigate('/dashboard');
     } finally {
       setLoading(false);
     }
@@ -371,7 +374,8 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
   const hostColleges = [
     "Coimbatore Institute of Engineering and Technology",
     "Coimbatore Institute of Management and Technology",
-    "Kovai Kalaimagal Arts and Science College"
+    "Kovai Kalaimagal Arts and Science College",
+    "CIET - School of Architecture"
   ];
 
   const isHostInstitution = hostColleges.includes(formData.institution);
@@ -444,6 +448,7 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
                     <input name="mobile" value={formData.mobile} onChange={handleChange} placeholder="Mobile number" className={`${inputClass} ${errors.mobile ? errorInputClass : ''}`} />
                   </div>
                 </div>
+
 
                 <div className={groupClass}>
                   <label className={labelClass}>Email</label>

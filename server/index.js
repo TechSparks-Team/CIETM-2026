@@ -31,7 +31,7 @@ const allowedOrigins = [
     process.env.FRONTEND_URL,
     process.env.CLIENT_URL,
     'https://cietm.online',
-    'http://localhost:5173',
+    'http://localhost:5174',
     'http://10.237.41.18:5173'
 ].filter(Boolean);
 

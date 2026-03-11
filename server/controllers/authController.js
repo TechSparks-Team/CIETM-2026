@@ -373,6 +373,25 @@ const getUsers = async (req, res) => {
 // @desc    Admin Create User
 // @route   POST /api/auth/admin/create-user
 // @access  Private/Admin
+// @desc    Update user role
+// @route   PUT /api/auth/users/:id/role
+// @access  Private/Admin
+const updateUserRole = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (user) {
+            user.role = req.body.role || user.role;
+            await user.save();
+            res.json({ message: 'User role updated successfully', user });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 const adminCreateUser = async (req, res) => {
     const { name, email, password, phone, role } = req.body;
 
@@ -424,5 +443,6 @@ module.exports = {
     forgotPassword,
     resetPassword,
     updatePassword,
-    adminCreateUser
+    adminCreateUser,
+    updateUserRole
 };

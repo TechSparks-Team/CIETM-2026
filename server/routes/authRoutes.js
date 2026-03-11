@@ -10,7 +10,8 @@ const {
     forgotPassword,
     resetPassword,
     updatePassword,
-    adminCreateUser
+    adminCreateUser,
+    updateUserRole
 } = require('../controllers/authController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -22,6 +23,7 @@ router.post('/forgot-password', forgotPassword);
 router.put('/reset-password/:resetToken', resetPassword);
 router.get('/profile', protect, getUserProfile);
 router.get('/users', protect, admin, getUsers);
+router.put('/users/:id/role', protect, admin, updateUserRole);
 router.put('/update-password', protect, updatePassword);
 router.post('/admin/create-user', protect, admin, adminCreateUser);
 

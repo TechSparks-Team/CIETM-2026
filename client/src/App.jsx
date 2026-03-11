@@ -14,6 +14,8 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const ChairDashboard = lazy(() => import('./pages/ChairDashboard'));
+const ReviewerDashboard = lazy(() => import('./pages/ReviewerDashboard'));
 const TermsConditions = lazy(() => import('./pages/TermsConditions'));
 
 const MobileWarning = () => {
@@ -58,7 +60,10 @@ const MobileWarning = () => {
 
 const AppContent = () => {
   const location = useLocation();
-  const hideNavbar = location.pathname.startsWith('/dashboard') || location.pathname.startsWith('/admin/dashboard');
+  const hideNavbar = location.pathname.startsWith('/dashboard') || 
+                     location.pathname.startsWith('/admin/dashboard') ||
+                     location.pathname.startsWith('/chair/dashboard') ||
+                     location.pathname.startsWith('/reviewer/dashboard');
   const hideFooter = hideNavbar || location.pathname === '/register' || location.pathname === '/login' || location.pathname === '/admin/login';
 
   return (
@@ -92,6 +97,26 @@ const AppContent = () => {
               element={
                 <ProtectedRoute role="admin">
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Chair / Editor Routes */}
+            <Route
+              path="/chair/dashboard"
+              element={
+                <ProtectedRoute role="chair">
+                  <ChairDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Reviewer Routes */}
+            <Route
+              path="/reviewer/dashboard"
+              element={
+                <ProtectedRoute role="reviewer">
+                  <ReviewerDashboard />
                 </ProtectedRoute>
               }
             />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogIn, Mail, Lock, ArrowRight, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,12 +17,24 @@ const LoginPage = () => {
 
   const { login, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getRedirectPath = (role) => {
+    switch (role) {
+      case 'admin': return '/admin/dashboard';
+      case 'chair': return '/chair/dashboard';
+      case 'reviewer': return '/reviewer/dashboard';
+      default: return '/dashboard';
+    }
+  };
+
+  const redirect = location.state?.from || getRedirectPath(user?.role);
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate(user.role === 'admin' ? '/admin/dashboard' : '/dashboard', { replace: true });
+      navigate(redirect, { replace: true });
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, redirect]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,11 +42,8 @@ const LoginPage = () => {
     try {
       const userData = await login(email, password);
       toast.success("Login Successful!");
-      if (userData.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+      const target = location.state?.from || getRedirectPath(userData.role);
+      navigate(target);
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed");
     } finally {

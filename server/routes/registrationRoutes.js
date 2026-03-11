@@ -16,7 +16,7 @@ const {
     requestReupload,
     handleReuploadRequest
 } = require('../controllers/registrationController');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, authorize } = require('../middleware/authMiddleware');
 const { upload, uploadProfilePic } = require('../config/cloudinary');
 
 router.get('/download/:id', protect, downloadPaper);
@@ -25,14 +25,14 @@ router.get('/verify/:id', protect, admin, verifyEntry);
 router.post('/draft', protect, saveDraft);
 router.post('/submit', protect, submitRegistration);
 router.get('/my', protect, getMyRegistration);
-router.get('/', protect, admin, getAllRegistrations);
-router.get('/analytics', protect, admin, getAdminAnalytics);
-router.put('/:id/review', protect, admin, reviewPaper);
-router.put('/:id/status', protect, admin, updateRegistrationStatus);
+router.get('/', protect, authorize('admin', 'chair', 'reviewer'), getAllRegistrations);
+router.get('/analytics', protect, authorize('admin', 'chair'), getAdminAnalytics);
+router.put('/:id/review', protect, authorize('admin', 'chair', 'reviewer'), reviewPaper);
+router.put('/:id/status', protect, authorize('admin', 'chair'), updateRegistrationStatus);
 router.post('/update-paper', protect, updatePaper);
 router.put('/profile-picture', protect, updateProfilePicture);
 router.post('/:id/request-reupload', protect, requestReupload);
-router.post('/:id/handle-reupload-request', protect, admin, handleReuploadRequest);
+router.post('/:id/handle-reupload-request', protect, authorize('admin', 'chair'), handleReuploadRequest);
 
 // File upload route
 router.post('/upload', protect, upload.single('paper'), (req, res) => {

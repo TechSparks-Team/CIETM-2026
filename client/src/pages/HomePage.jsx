@@ -67,6 +67,8 @@ const HomePage = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [themePage, setThemePage] = useState(0);
   const [activeDev, setActiveDev] = useState(null);
+  const [isAdvisoryPaused, setIsAdvisoryPaused] = useState(false);
+  const [isSpeakersPaused, setIsSpeakersPaused] = useState(false);
 
   const [itemsPerPage, setItemsPerPage] = useState(window.innerWidth < 768 ? 3 : 6);
 
@@ -110,27 +112,36 @@ const HomePage = () => {
     {
       id: '01',
       title: 'Engineering Innovations',
-      desc: 'Advancements in Civil, Computer Science, Electrical, Electronics, Mechanical & Mechatronics Engineering.',
+      desc: 'Advancements in Architecture, Civil, Mechanical, Mechatronics, and specialized Industrial Engineering streams.',
       icon: <Layers className="w-12 h-12 text-indigo-600 mb-6" />
     },
     {
       id: '02',
       title: 'Economic Sustainability',
-      desc: 'Innovative models for Economic Sustainability, Circular Economy, and ESG-driven strategies.',
+      desc: 'Innovative models for Economic Growth, Circular Economy, ESG-driven management, and Social Sciences.',
       icon: <Globe className="w-12 h-12 text-indigo-600 mb-6" />
     },
     {
       id: '03',
       title: 'IT, AI & Communication',
-      desc: 'Pioneering work in Information Technology, Artificial Intelligence, and Communication Engineering.',
+      desc: 'Pioneering work in Intelligent Systems, Cyber Security, Deep Learning, and Advanced Networking Solutions.',
       icon: <Sparkles className="w-12 h-12 text-indigo-600 mb-6" />
     },
     {
       id: '04',
-      title: 'Green Technology',
-      desc: 'Research in Renewable Energy, Green Technology, and Sustainable Infrastructure development.',
+      title: 'Science & Green Tech',
+      desc: 'Applied Sciences research in Renewable Energy, Green Technology, and Sustainable Material development.',
       icon: <Award className="w-12 h-12 text-indigo-600 mb-6" />
     }
+  ];
+
+  const themes = [
+    { id: "01", dept: "CSE, AI & DS, AI & ML", tech: "Smart Computing & AI", desc: "Focusing on Deep Learning, Computer Vision, NLP, and Big Data Analytics for solving complex industrial and societal problems." },
+    { id: "02", dept: "IT & Cyber Security", tech: "Digital Tech & Security", desc: "Advancements in Cryptography, Blockchain, Cloud Infrastructure, and advanced Cybersecurity Frameworks for digital ecosystems." },
+    { id: "03", dept: "ECE, EEE, VLSI", tech: "Electronics & Communication", desc: "Next-generation research in VLSI Design, Smart Grids, IoT Systems, and 5G/6G Wireless Communication Networks." },
+    { id: "04", dept: "Mech & Mechatronics", tech: "Robotics & Automation", desc: "Innovative work in Smart Manufacturing, Industrial Automation, Robotic Systems, and Integrated Mechatronics Solutions." },
+    { id: "05", dept: "Civil & S&H (Materials)", tech: "Infrastructure & Green Building", desc: "Sustainable Civil Materials, Intelligent Infrastructure, Smart Cities, and Applied Sciences for Eco-friendly Design." },
+    { id: "06", dept: "Management & S&H", tech: "Economic & Social Sustainability", desc: "Circular Economy, ESG Governance, Digital Transformation in Management, and Sustainable Humanities research." }
   ];
 
   const speakers = [
@@ -151,15 +162,15 @@ const HomePage = () => {
   ];
 
   const advisoryBoard = [
+    { name: "Mrs. K. Velumani", affiliation: "Dean - S&H", img: "/advisory/velumani.png" },
+    { name: "Dr. K. Pushpalatha", affiliation: "Dean - School of computing", img: "/advisory/pushpalatha.jpeg" },
     { name: "Dr. S. Gokul", affiliation: "Associate Professor and Head - EEE, Dean - Affiliations and Approvals", img: "/advisory/Gokul Shanmugan.jpeg" },
+    { name: "Dr. D. Seenivasan", affiliation: "Professor & Head - MECH", img: "/advisory/seenivasan.jpg" },
+    { name: "Dr.N.Mohan Raj", affiliation: "Professor & Head - MCT", img: "/advisory/mohan.jpeg" },
     { name: "Dr. N. R. Deepa", affiliation: "Associate Professor and Head - IT", img: "/advisory/dheepa.jpeg" },
     { name: "Dr. S. Priyadharshini", affiliation: "Associate Professor and Head - Management Studies", img: "/advisory/priyadharshini.jpg" },
-    { name: "Dr. K. Pushpalatha", affiliation: "Dean - School of computing", img: "/advisory/pushpalatha.png" },
     { name: "Dr. A. Umaamaheshvari", affiliation: "Associate Professor and Head - ECE", img: "/advisory/umaamaheshvari.png" },
-    { name: "Dr.N.Mohan Raj", affiliation: "Professor & Head - MCT", img: "/advisory/mohan.jpeg" },
-    { name: "Mrs. K. Velumani", affiliation: "Dean - S&H", img: "/advisory/velumani.png" },
     { name: "Dr. E. Gomathi", affiliation: "Associate Professor & Head - AI&DS", img: "/advisory/gomathi.jpeg" },
-    { name: "Dr. D. Seenivasan", affiliation: "Professor & Head - MECH", img: "/advisory/seenivasan.jpg" },
   ];
 
   // Calculate duration based on total width to maintain constant velocity (80px/s)
@@ -187,7 +198,7 @@ const HomePage = () => {
           {/* Lighter, more vibrant overlays */}
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950/60"></div>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.15),transparent_70%)]"></div>
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"></div>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
         </div>
 
         <div className="w-full max-w-7xl mx-auto px-6 text-center relative z-20">
@@ -257,16 +268,15 @@ const HomePage = () => {
               About the <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Conference</span>
             </h2>
             <p className="text-lg md:text-2xl text-slate-600 leading-relaxed font-semibold mb-8 px-2 max-w-4xl mx-auto">
-              The conference will focus on the contemporary cutting edge trends and advances in the field of Science, Engineering, Technology and Management domains.
+              CIETM-2026 stands at the intersection of innovation and excellence, providing a premier platform to showcase the latest breakthroughs in Science, Engineering, Technology, and Management.
             </p>
             <div className="w-20 h-1 bg-indigo-600 mx-auto mb-8 rounded-full"></div>
-            <div className="flex flex-col gap-6 text-base text-slate-600 leading-relaxed mb-10 max-w-4xl mx-auto px-4">
+            <div className="flex flex-col gap-6 text-base text-slate-600 leading-relaxed mb-10 max-w-4xl mx-auto px-4 text-justify">
               <p>
-                The conference aims to address the issues by providing a platform for the exchange of innovative ideas and information on recent advancements.
-                This Conference provides a forum for undergraduates, post graduates, research scholars, faculty members and Personnel's from industry to come together and discuss the latest developments and innovations in Science, Engineering, Technology and Management.
+                The conference serves as a dynamic ecosystem where academia and industry experts converge to navigate the complexities of modern innovation. By fostering cross-disciplinary dialogue, CIETM-2026 empowers participants to stay ahead of emerging trends and collaborate on solutions for tomorrow’s global challenges.
               </p>
               <p>
-                This helps the delegates to update their knowledge and provide a platform for future research. This also serves as a workshop for young researchers to build their research.
+                This gathering acts as a vital catalyst for professional growth, offering young researchers a dedicated space to refine their work, gain critical insights, and establish a foundation for future breakthroughs. Our mission is to bridge the gap between academic research and industrial application, creating lasting impact across the technological landscape.
               </p>
             </div>
 
@@ -289,21 +299,8 @@ const HomePage = () => {
 
                 <div className="relative px-8 md:px-16">
                   {/* Theme Cards Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-6 min-h-[350px]">
-                    {[
-                      { id: "01", dept: "AI & Data Science", tech: "Artificial Intelligence & Data Science", desc: "Digital Applications & Innovations in Computer Science." },
-                      { id: "02", dept: "Civil", tech: "Civil Engineering", desc: "Innovations in Civil Engineering, Sustainable Housing and Other Infrastructure Intelligence." },
-                      { id: "03", dept: "Computer Science", tech: "Computer Science & Engineering", desc: "Digital Applications & Innovations in Computer Science." },
-                      { id: "04", dept: "CSE (AI & ML)", tech: "Artificial Intelligence & Machine Learning", desc: "Digital Applications & Innovations in Computer Science." },
-                      { id: "05", dept: "CSE (Cyber Security)", tech: "Cyber Security", desc: "Digital Applications & Innovations in Computer Science." },
-                      { id: "06", dept: "Electrical & Electronics", tech: "Electrical & Electronics Engineering", desc: "Technology for Renewable Energy and Innovations in Electrical Engineering." },
-                      { id: "07", dept: "Electronics & VLSI", tech: "Electronics & VLSI Design", desc: "Innovations in Information Technology, Communication Engineering & VLSI Design." },
-                      { id: "08", dept: "Information Tech", tech: "Information Technology", desc: "Innovations in Information Technology & Digital Applications." },
-                      { id: "09", dept: "Mechanical", tech: "Mechanical Engineering", desc: "Innovations in Mechanical Engineering." },
-                      { id: "10", dept: "Mechatronics", tech: "Mechatronics Engineering", desc: "Innovations in Mechatronics Engineering." },
-                      { id: "11", dept: "Science & Humanities", tech: "Science & Humanities", desc: "Application of Green Technology and Innovative Models for Economic Sustainability." },
-                      { id: "12", dept: "Management", tech: "MBA - Business Administration", desc: "Innovative Models for Economic Sustainability & Operations Management." }
-                    ].slice(themePage * itemsPerPage, (themePage * itemsPerPage) + itemsPerPage).map((item, idx) => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left mb-6 min-h-[350px]">
+                    {themes.slice(themePage * itemsPerPage, (themePage * itemsPerPage) + itemsPerPage).map((item, idx) => (
                       <motion.div
                         key={item.id}
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -338,16 +335,16 @@ const HomePage = () => {
 
                   {/* Right Button */}
                   <button
-                    onClick={() => setThemePage(Math.min(Math.ceil(12 / itemsPerPage) - 1, themePage + 1))}
-                    disabled={themePage === Math.ceil(12 / itemsPerPage) - 1}
+                    onClick={() => setThemePage(Math.min(Math.ceil(themes.length / itemsPerPage) - 1, themePage + 1))}
+                    disabled={themePage === Math.ceil(themes.length / itemsPerPage) - 1}
                     className="absolute right-0 md:right-2 top-[45%] -translate-y-1/2 z-20 p-2 md:p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/20 hover:border-white/30 disabled:opacity-0 transition-all backdrop-blur-md shadow-xl"
                   >
                     <ChevronRight className="text-white w-6 h-6 md:w-8 md:h-8" />
                   </button>
 
-                  {/* Pagination Dots */}
-                  <div className="flex items-center justify-center gap-2 mt-6">
-                    {Array.from({ length: Math.ceil(12 / itemsPerPage) }).map((_, i) => (
+                  {/* Pagination Dots - Only visible on mobile */}
+                  <div className="flex md:hidden items-center justify-center gap-2 mt-6">
+                    {Array.from({ length: Math.ceil(themes.length / itemsPerPage) }).map((_, i) => (
                       <div
                         key={i}
                         className={`h-2 rounded-full transition-all duration-300 ${i === themePage ? 'w-8 bg-indigo-400' : 'w-2 bg-white/20'}`}
@@ -402,7 +399,13 @@ const HomePage = () => {
                   </li>
                 </ul>
                 <div className="mt-10 md:mt-12 bg-white/5 border border-white/10 rounded-3xl p-6 md:p-8">
-                  <div className="text-sm font-black text-sky-400 uppercase tracking-widest mb-8 border-b border-white/10 pb-5">Registration Fee</div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-white/10 pb-5">
+                    <div className="text-sm font-black text-sky-400 uppercase tracking-widest">Registration Fee</div>
+                    <Link to="/dashboard?tab=payment" className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-xl text-xs font-bold transition-all group/pay">
+                      Proceed to Payment
+                      <ArrowRight size={14} className="group-hover/pay:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-8 gap-x-12">
                     <div className="flex gap-4 items-center">
                       <div className="w-11 h-11 bg-sky-400/10 rounded-2xl flex items-center justify-center text-sky-400 border border-sky-400/20 shrink-0"><GraduationCap size={20} /></div>
@@ -440,9 +443,9 @@ const HomePage = () => {
 
               {/* Vertical Timeline Pane */}
               <div className="relative">
+                <h3 className="text-2xl md:text-4xl font-extrabold mb-10 text-white text-center md:text-left">Conference Timeline</h3>
                 <div className="flex flex-col gap-0">
                   {[
-                    { icon: <Users size={22} />, title: 'Abstract submission', date: 'March 8, 2026' },
                     { icon: <FileText size={22} />, title: 'Full paper submission', date: 'March 16, 2026' },
                     { icon: <Award size={22} />, title: 'Acceptance notification', date: 'March 24, 2026' },
                     { icon: <CheckCircle size={22} />, title: 'Camera ready', date: 'April 2, 2026' },
@@ -537,9 +540,9 @@ const HomePage = () => {
             <h3 className="text-2xl font-bold text-slate-500 uppercase tracking-[0.2em] text-center mb-12 flex items-center justify-center gap-6 before:content-[''] before:h-px before:w-[0px] before:bg-slate-300 after:content-[''] after:h-px after:w-[60px] after:bg-slate-300">Chief Patron</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-6xl mx-auto justify-center">
               {[
+                { name: "Dr. P. Natarajan", role: "Academic Director", img: "/assets/Natarajan.jpeg" },
                 { name: "Dr. K. A. Chinnaraju", role: "Director", img: "/assets/Director.jpg" },
-                { name: "Thiru. M. Thangavelu", role: "Trustee", img: "/assets/Thangavelu.png" },
-                { name: "Dr. P. Natarajan", role: "Academic Director", img: "/assets/Natarajan.jpeg" }
+                { name: "Thiru. M. Thangavelu", role: "Treasurer", img: "/assets/Thangavelu.png" },
               ].map((p, i) => (
                 <motion.div
                   key={i}
@@ -565,7 +568,7 @@ const HomePage = () => {
             <h3 className="text-2xl font-bold text-slate-500 uppercase tracking-[0.2em] text-center mb-12 mt-20 flex items-center justify-center gap-6 before:content-[''] before:h-px before:w-[60px] before:bg-slate-300 after:content-[''] after:h-px after:w-[60px] after:bg-slate-300">Patron</h3>
             <div className="max-w-sm mx-auto">
               {[
-                { name: "Dr. K. Manikanda Subramanian", role: "Principal", img: "assets/Principal1.png" }
+                { name: "Dr. K. Manikanda Subramanian", role: "Principal", img: "assets/Principal1.jpeg" }
               ].map((p, i) => (
                 <motion.div
                   key={i}
@@ -635,18 +638,26 @@ const HomePage = () => {
                 <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
                 <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
 
-                <div
-                  className="flex gap-8 hover:[animation-play-state:paused]"
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ left: -2000, right: 2000 }}
+                  className="flex gap-8 cursor-grab active:cursor-grabbing"
                   style={{
                     animation: `scroll ${duration}s linear infinite`,
+                    animationPlayState: isSpeakersPaused ? 'paused' : 'running',
                     width: 'max-content'
                   }}
+                  onMouseEnter={() => setIsSpeakersPaused(true)}
+                  onMouseLeave={() => setIsSpeakersPaused(false)}
+                  onClick={() => setIsSpeakersPaused(!isSpeakersPaused)}
+                  onDragStart={() => setIsSpeakersPaused(true)}
+                  onDragEnd={() => setIsSpeakersPaused(false)}
                 >
                   {/* 3 sets for smooth infinity scroll */}
                   {[...speakers, ...speakers, ...speakers].map((s, i) => (
                     <SpeakerCard key={i} s={s} width="w-[220px] shrink-0" />
                   ))}
-                </div>
+                </motion.div>
               </>
             ) : (
               <div className={`grid gap-6 justify-center items-stretch mx-auto ${
@@ -663,8 +674,8 @@ const HomePage = () => {
           </div>
           <style>{`
             @keyframes scroll {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(calc(-100% / 3)); }
+                0% { transform: translateX(calc(-100% / 3)); }
+                100% { transform: translateX(0); }
             }
           `}</style>
         </div>
@@ -684,12 +695,20 @@ const HomePage = () => {
             <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none"></div>
             <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none"></div>
 
-            <div
-              className="flex gap-8 hover:[animation-play-state:paused]"
+            <motion.div
+              drag="x"
+              dragConstraints={{ left: -2000, right: 2000 }}
+              className="flex gap-8 cursor-grab active:cursor-grabbing"
               style={{
                 animation: `board-scroll ${advisoryDuration}s linear infinite`,
+                animationPlayState: isAdvisoryPaused ? 'paused' : 'running',
                 width: 'max-content'
               }}
+              onMouseEnter={() => setIsAdvisoryPaused(true)}
+              onMouseLeave={() => setIsAdvisoryPaused(false)}
+              onClick={() => setIsAdvisoryPaused(!isAdvisoryPaused)}
+              onDragStart={() => setIsAdvisoryPaused(true)}
+              onDragEnd={() => setIsAdvisoryPaused(false)}
             >
               {/* 3 sets for smooth infinity scroll */}
               {[...advisoryBoard, ...advisoryBoard, ...advisoryBoard].map((item, i) => (
@@ -707,12 +726,12 @@ const HomePage = () => {
                   </div>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           </div>
           <style>{`
             @keyframes board-scroll {
-                0% { transform: translateX(calc(-100% / 3)); }
-                100% { transform: translateX(0); }
+                0% { transform: translateX(0); }
+                100% { transform: translateX(calc(-100% / 3)); }
             }
           `}</style>
         </div>

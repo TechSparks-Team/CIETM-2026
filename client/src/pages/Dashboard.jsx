@@ -9,7 +9,7 @@ import {
   Upload, Home, Edit2, Camera, User, CreditCard
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import RegistrationForm from '../components/RegistrationForm';
+import SubmissionFormSingle from '../components/SubmissionFormSingle';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'react-qr-code';
 
@@ -24,7 +24,6 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editData, setEditData] = useState(null);
-  const [isSavingDetails, setIsSavingDetails] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -32,6 +31,7 @@ const Dashboard = () => {
   const [changingPassword, setChangingPassword] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [showIDCard, setShowIDCard] = useState(false);
+  const [isFlipped, setIsFlipped] = useState(false);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [lastSync, setLastSync] = useState(new Date());
@@ -118,10 +118,15 @@ const Dashboard = () => {
   }, [location.search, user, navigate, fetchRegistration]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab && ['overview', 'paper', 'payment', 'drafts', 'notifications'].includes(tab)) {
+      setActiveTab(tab);
+    }
     fetchRegistration();
     fetchNotifications();
     fetchSettings();
-  }, [fetchRegistration, fetchNotifications, fetchSettings]);
+  }, [fetchRegistration, fetchNotifications, fetchSettings, location.search]);
 
   useEffect(() => {
     if (registration && ['Accepted', 'Rejected'].includes(registration.status) && activeTab === 'drafts') {
@@ -744,12 +749,11 @@ const Dashboard = () => {
                 <p className="text-sm font-semibold text-amber-800">Please complete all required registration details before proceeding to upload your manuscript.</p>
               </div>
             )}
-            <RegistrationForm
-              startStep={getInitialStep()}
-              showAccountCreation={false}
+            <SubmissionFormSingle
+              registration={registration}
+              user={user}
               onSuccess={() => {
                 fetchRegistration();
-                toast.success("Submission Completed!");
               }}
             />
           </motion.div>
@@ -762,81 +766,7 @@ const Dashboard = () => {
 
   const renderMyPaper = () => {
     const handleEditDetails = () => {
-      setEditData({
-        title: registration?.paperDetails?.title || '',
-        abstract: registration?.paperDetails?.abstract || '',
-        mobile: registration?.personalDetails?.mobile || user?.phone || '',
-        institution: registration?.personalDetails?.institution || '',
-        department: registration?.personalDetails?.department || '',
-        areaOfSpecialization: registration?.personalDetails?.areaOfSpecialization || '',
-        category: registration?.personalDetails?.category || 'UG/PG STUDENTS',
-        yearOfStudy: registration?.personalDetails?.yearOfStudy || '',
-        designation: registration?.personalDetails?.designation || '',
-        track: registration?.paperDetails?.track || 'CIDT',
-        profilePicture: registration?.personalDetails?.profilePicture || '',
-        teamMembers: registration?.teamMembers ? JSON.parse(JSON.stringify(registration.teamMembers)) : [],
-        keywords: registration?.paperDetails?.keywords?.join(', ') || ''
-      });
-    };
-
-    const handleSaveDetails = async () => {
-      // Basic core validation
-      if (!editData.title?.trim() || !editData.abstract?.trim() || !editData.keywords?.trim()) {
-        return toast.error("Paper title, abstract, and keywords are required!");
-      }
-      if (!editData.mobile?.trim() || !editData.institution?.trim() || !editData.department?.trim()) {
-        return toast.error("Mobile, institution, and department are required!");
-      }
-      if (editData.category === 'UG/PG STUDENTS' && !editData.yearOfStudy?.trim()) {
-        return toast.error("Year of study is required for students!");
-      }
-      if ((editData.category === 'FACULTY/RESEARCH SCHOLARS' || editData.category === 'INDUSTRY PERSONNEL') && !editData.designation?.trim()) {
-        return toast.error("Designation is required!");
-      }
-
-      // Team / Co-author validation
-      for (let i = 0; i < editData.teamMembers.length; i++) {
-        const m = editData.teamMembers[i];
-        if (!m.name?.trim() || !m.email?.trim() || !m.mobile?.trim() || !(m.affiliation?.trim() || m.institution?.trim()) || !m.department?.trim()) {
-          return toast.error(`Please fill in all core details for co-author ${i + 1}`);
-        }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(m.email)) {
-          return toast.error(`Invalid email format for co-author ${i + 1}`);
-        }
-        if (m.mobile.length < 10) {
-          return toast.error(`Invalid mobile number for co-author ${i + 1}`);
-        }
-        if (m.category === 'UG/PG STUDENTS' && !m.yearOfStudy?.trim()) {
-          return toast.error(`Year/Course is required for co-author ${i + 1}`);
-        }
-        if ((m.category === 'FACULTY/RESEARCH SCHOLARS' || m.category === 'INDUSTRY PERSONNEL') && !m.designation?.trim()) {
-          return toast.error(`Designation is required for co-author ${i + 1}`);
-        }
-      }
-
-      try {
-        setIsSavingDetails(true);
-        const submitPayload = {
-          personalDetails: { ...registration.personalDetails, mobile: editData.mobile, institution: editData.institution, department: editData.department, areaOfSpecialization: editData.areaOfSpecialization, yearOfStudy: editData.yearOfStudy, designation: editData.designation, category: editData.category, profilePicture: editData.profilePicture },
-          teamMembers: editData.teamMembers,
-          paperDetails: { ...registration.paperDetails, title: editData.title, abstract: editData.abstract, keywords: editData.keywords.split(',').map(k => k.trim()).filter(k => k), track: editData.track }
-        };
-        await axios.post('/api/registrations/draft', submitPayload, { headers: { Authorization: `Bearer ${user.token}` } });
-        await fetchRegistration();
-        setEditData(null);
-        toast.success("Details updated successfully!");
-      } catch (error) {
-        toast.error("Failed to update details");
-      } finally {
-        setIsSavingDetails(false);
-      }
-    };
-
-    const updateEditTeamMember = (index, field, value) => {
-      const newMembers = [...editData.teamMembers];
-      newMembers[index][field] = value;
-      setEditData({ ...editData, teamMembers: newMembers });
+      setEditData(true);
     };
 
     const paperDetailsSection = (
@@ -844,196 +774,18 @@ const Dashboard = () => {
         {/* Registration Details Group */}
         {editData ? (
           <motion.div variants={overviewItemVariants} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-glass border border-white/80 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-slate-100/50 pb-6">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.15em]">Edit Registration Details</h3>
-            </div>
-
-            <div className="space-y-6">
-              {/* Paper Details Section */}
-              <div>
-                <h4 className="text-sm font-bold text-slate-800 mb-3">Paper Details</h4>
-                <div className="grid grid-cols-1 gap-4 mb-6">
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Title</label>
-                    <input value={editData.title} onChange={e => setEditData({ ...editData, title: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="Paper Title" />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Abstract</label>
-                    <textarea rows="4" value={editData.abstract} onChange={e => setEditData({ ...editData, abstract: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="Paper Abstract" />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Track</label>
-                    <select value={editData.track} onChange={e => setEditData({ ...editData, track: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all">
-                      <option value="CIDT">Track 1: Computing, Intelligence & Digital Technologies</option>
-                      <option value="ESSI">Track 2: Engineering, Science & Sustainable Innovations</option>
-                      <option value="EAHSS">Track 3: Education, Arts, Humanities & Social Sciences</option>
-                      <option value="MBHSD">Track 4: Management, Business & Health Sciences</option>
-                    </select>
-                  </div>
-                </div>
-
-                <h4 className="text-sm font-bold text-slate-800 mb-3">Principal Author Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-3 mb-2">
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Select Participant Category</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      {Object.entries({
-                        'UG/PG STUDENTS': { fee: 500 },
-                        'FACULTY/RESEARCH SCHOLARS': { fee: 750 },
-                        'EXTERNAL / ONLINE PRESENTATION': { fee: 300 },
-                        'INDUSTRY PERSONNEL': { fee: 900 }
-                      }).map(([key, data]) => (
-                        <div
-                          key={key}
-                          className={`border-2 rounded-xl p-3 cursor-pointer transition-all duration-200 flex flex-col gap-1 bg-white hover:border-slate-300 hover:bg-slate-50 relative overflow-hidden group ${editData.category === key ? 'border-indigo-600 bg-indigo-50/50 shadow-sm shadow-indigo-500/5' : 'border-slate-200'}`}
-                          onClick={() => setEditData({ ...editData, category: key })}
-                        >
-                          <div className="flex items-start gap-2">
-                            <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${editData.category === key ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 group-hover:border-slate-400 font-black'}`}>
-                              <div className={`w-1.5 h-1.5 bg-white rounded-full transition-all ${editData.category === key ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}></div>
-                            </div>
-                            <span className={`font-black text-[0.6rem] uppercase tracking-wider leading-tight ${editData.category === key ? 'text-indigo-700' : 'text-slate-700'}`}>{key}</span>
-                          </div>
-                          <div className="pl-5 flex items-baseline gap-1 mt-0.5">
-                            <span className="text-sm font-black text-slate-900 font-mono tracking-tighter">₹{data.fee}</span>
-                            <span className="text-[0.55rem] text-slate-400 font-bold uppercase tracking-tight">Fee</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Mobile</label>
-                    <input value={editData.mobile} onChange={e => setEditData({ ...editData, mobile: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="Mobile number" />
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Institution</label>
-                    <select
-                      value={
-                        ["Coimbatore Institute of Engineering and Technology", "Coimbatore Institute of Management and Technology", "Kovai Kalaimagal Arts and Science College"].includes(editData.institution)
-                          ? editData.institution
-                          : 'External'
-                      }
-                      onChange={e => {
-                        if (e.target.value !== 'External') setEditData({ ...editData, institution: e.target.value });
-                        else setEditData({ ...editData, institution: '' });
-                      }}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all mb-2"
-                    >
-                      <option value="Coimbatore Institute of Engineering and Technology">Coimbatore Institute of Engineering and Technology</option>
-                      <option value="Coimbatore Institute of Management and Technology">Coimbatore Institute of Management and Technology</option>
-                      <option value="Kovai Kalaimagal Arts and Science College">Kovai Kalaimagal Arts and Science College</option>
-                      <option value="External">External Institution...</option>
-                    </select>
-                    {!["Coimbatore Institute of Engineering and Technology", "Coimbatore Institute of Management and Technology", "Kovai Kalaimagal Arts and Science College"].includes(editData.institution) && (
-                      <input autoFocus value={editData.institution} onChange={e => setEditData({ ...editData, institution: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-indigo-200 bg-white ring-2 ring-indigo-500/10 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all mt-1" placeholder="Enter External Institution" />
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Department</label>
-                    <input value={editData.department} onChange={e => setEditData({ ...editData, department: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="Department" />
-                  </div>
-                  {(editData.category === 'UG/PG STUDENTS') && (
-                    <div>
-                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Year of Study</label>
-                      <input value={editData.yearOfStudy} onChange={e => setEditData({ ...editData, yearOfStudy: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="Year of Study" />
-                    </div>
-                  )}
-                  {(editData.category === 'FACULTY/RESEARCH SCHOLARS' || editData.category === 'INDUSTRY PERSONNEL') && (
-                    <div>
-                      <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Designation</label>
-                      <input value={editData.designation} onChange={e => setEditData({ ...editData, designation: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="Designation" />
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Area of Specialization</label>
-                    <input value={editData.areaOfSpecialization} onChange={e => setEditData({ ...editData, areaOfSpecialization: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="Area of Specialization" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-slate-50">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-bold text-slate-800">Co-Authors</h4>
-                  {editData.teamMembers.length < 3 && (
-                    <button onClick={() => setEditData({ ...editData, teamMembers: [...editData.teamMembers, { name: '', email: '', mobile: '', affiliation: '', category: 'UG/PG STUDENTS' }] })} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 px-3 py-1.5 bg-indigo-50 rounded-lg transition-colors border border-indigo-100">+ Add Co-author</button>
-                  )}
-                </div>
-                <div className="space-y-4">
-                  {editData.teamMembers.length === 0 && <p className="text-xs text-slate-400 italic">No co-authors added yet.</p>}
-                  {editData.teamMembers.map((m, idx) => (
-                    <div key={idx} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 relative group">
-                      <button onClick={() => {
-                        const newM = [...editData.teamMembers]; newM.splice(idx, 1); setEditData({ ...editData, teamMembers: newM })
-                      }} className="absolute top-4 right-4 text-red-400 hover:text-red-600 text-[10px] font-bold uppercase tracking-widest transition-colors">Remove</button>
-                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Co-author {idx + 1}</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 ml-1">Full Name *</label><input value={m.name} onChange={e => updateEditTeamMember(idx, 'name', e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-xs focus:border-indigo-500 outline-none" placeholder="Name" /></div>
-                        <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 ml-1">Email *</label><input value={m.email} onChange={e => updateEditTeamMember(idx, 'email', e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-xs focus:border-indigo-500 outline-none" placeholder="Email" /></div>
-                        <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 ml-1">Mobile *</label><input value={m.mobile} onChange={e => updateEditTeamMember(idx, 'mobile', e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-xs focus:border-indigo-500 outline-none" placeholder="Mobile" /></div>
-                        <div>
-                          <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 ml-1">Category *</label>
-                          <select value={m.category} onChange={e => updateEditTeamMember(idx, 'category', e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-[10px] font-semibold text-slate-700 bg-white focus:border-indigo-500 outline-none">
-                            <option value="UG/PG STUDENTS">UG/PG STUDENTS</option>
-                            <option value="FACULTY/RESEARCH SCHOLARS">FACULTY/RESEARCH SCHOLARS</option>
-                            <option value="EXTERNAL / ONLINE PRESENTATION">EXTERNAL / ONLINE PRESENTATION</option>
-                            <option value="INDUSTRY PERSONNEL">INDUSTRY PERSONNEL</option>
-                          </select>
-                        </div>
-                        <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex flex-col gap-1">
-                            <label className="block text-[9px] font-bold text-slate-400 uppercase ml-1">Institution</label>
-                            <select
-                              value={
-                                ["Coimbatore Institute of Engineering and Technology", "Coimbatore Institute of Management and Technology", "Kovai Kalaimagal Arts and Science College"].includes(m.affiliation || m.institution)
-                                  ? (m.affiliation || m.institution)
-                                  : 'External'
-                              }
-                              onChange={e => {
-                                if (e.target.value !== 'External') {
-                                  updateEditTeamMember(idx, 'affiliation', e.target.value);
-                                } else if (!(m.affiliation || m.institution) || ["Coimbatore Institute of Engineering and Technology", "Coimbatore Institute of Management and Technology", "Kovai Kalaimagal Arts and Science College"].includes(m.affiliation || m.institution)) {
-                                  updateEditTeamMember(idx, 'affiliation', '');
-                                }
-                              }}
-                              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-xs focus:border-indigo-500 outline-none mb-1"
-                            >
-                              <option value="Coimbatore Institute of Engineering and Technology">Coimbatore Institute of Engineering and Technology</option>
-                              <option value="Coimbatore Institute of Management and Technology">Coimbatore Institute of Management and Technology</option>
-                              <option value="Kovai Kalaimagal Arts and Science College">Kovai Kalaimagal Arts and Science College</option>
-                              <option value="External">External Institution...</option>
-                            </select>
-                            {!["Coimbatore Institute of Engineering and Technology", "Coimbatore Institute of Management and Technology", "Kovai Kalaimagal Arts and Science College"].includes(m.affiliation || m.institution) && (
-                              <input value={m.affiliation || m.institution} onChange={e => updateEditTeamMember(idx, 'affiliation', e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-indigo-200 ring-2 ring-indigo-500/10 text-xs focus:border-indigo-500 outline-none" placeholder="External Institution Name" />
-                            )}
-                          </div>
-                          {(m.category === 'FACULTY/RESEARCH SCHOLARS' || m.category === 'INDUSTRY PERSONNEL') && (
-                            <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 ml-1">Designation</label><input value={m.designation} onChange={e => updateEditTeamMember(idx, 'designation', e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-xs focus:border-indigo-500 outline-none" placeholder="Designation" /></div>
-                          )}
-                          <div><label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 ml-1">Area of Specialization</label><input value={m.areaOfSpecialization} onChange={e => updateEditTeamMember(idx, 'areaOfSpecialization', e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-xs focus:border-indigo-500 outline-none" placeholder="Specialization" /></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-slate-50">
-                <h4 className="text-sm font-bold text-slate-800 mb-2">Paper Keywords</h4>
-                <p className="text-[10px] text-slate-400 font-medium mb-3">Comma separated keywords relevant to your paper.</p>
-                <input value={editData.keywords} onChange={e => setEditData({ ...editData, keywords: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all" placeholder="e.g. AI, Machine Learning, Robotics" />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
-                <button onClick={() => setEditData(null)} disabled={isSavingDetails} className="px-5 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors border border-slate-200 shadow-sm">Cancel</button>
-                <button onClick={handleSaveDetails} disabled={isSavingDetails} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg hover:shadow-indigo-500/20 disabled:opacity-50">
-                  {isSavingDetails ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <CheckCircle size={16} />}
-                  {isSavingDetails ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
+             <SubmissionFormSingle 
+                registration={registration} 
+                user={user} 
+                onSuccess={() => {
+                    fetchRegistration();
+                    setEditData(null);
+                }}
+                onCancel={() => setEditData(null)}
+             />
           </motion.div>
         ) : (
+
           <motion.div variants={overviewItemVariants} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-lg transition-all duration-300">
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-slate-50 pb-6">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.15em]">Registration Details</h3>
@@ -1868,89 +1620,133 @@ const Dashboard = () => {
         {showIDCard && registration && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in print:bg-white print:p-0">
             <div className="flex flex-col gap-6 max-w-[28rem] w-full animate-scale-in print:hidden perspective-1000">
-              <div className="relative" id="printable-id-card">
-                {/* ID Card Front */}
-                <motion.div
-                  whileHover={{ scale: 1.02, rotateY: 5, rotateX: 5 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className="rounded-[2.5rem] p-[3px] bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 relative overflow-hidden shadow-2xl"
-                  style={{ transformPerspective: 1000 }}
+
+              <div
+                className="relative cursor-pointer transition-all duration-700 ease-in-out"
+                onClick={() => setIsFlipped(!isFlipped)}
+                style={{
+                  transformStyle: 'preserve-3d',
+                  transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  height: '280px'
+                }}
+              >
+                {/* ID Card Front - identity focused */}
+                <div
+                  className="absolute inset-0 w-full h-full backface-hidden"
+                  style={{ backfaceVisibility: 'hidden' }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-white/10 backdrop-blur-md z-0"></div>
-                  <div className="bg-white/90 backdrop-blur-2xl rounded-[2.3rem] p-8 relative z-10 h-full flex flex-col justify-between border border-white/50">
-
-                    {/* Decorative Background Elements */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-pink-400/20 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
-                      <Award size={200} />
-                    </div>
-
-                    {/* Card Header */}
-                    <div className="flex justify-between items-start mb-8 relative z-20">
-                      <div>
-                        <h4 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 to-purple-700 leading-none tracking-tight">CIETM <span className="text-indigo-900">2026</span></h4>
-                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-2">Conclave on Innovation</p>
+                  <div className="w-full h-full bg-white rounded-3xl shadow-2xl overflow-hidden relative border border-slate-200">
+                    <div className="h-[45%] w-full flex relative overflow-hidden">
+                      <div className="w-[45%] h-full bg-[#1a237e] relative z-10 flex flex-col justify-center px-6">
+                        <div className="flex flex-col items-center">
+                          <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center mb-1">
+                            <Award className="text-white" size={24} />
+                          </div>
+                          <h4 className="text-white font-black text-sm tracking-widest text-center leading-tight">CIETM<br />2026</h4>
+                        </div>
+                        {/* Angled Divider */}
+                        <div className="absolute right-0 top-0 bottom-0 w-12 bg-[#1a237e] transform translate-x-1/2 -skew-x-[20deg] z-0"></div>
                       </div>
-                      <div className="w-14 h-14 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center text-indigo-700 font-bold shadow-inner border border-white">
-                        <span className="text-2xl">C</span>
+                      <div className="flex-1 h-full relative">
+                        <img src="/assets/ciet.jpeg" alt="CIET" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-indigo-900/10"></div>
                       </div>
                     </div>
 
-                    {/* Card Body */}
-                    <div className="flex gap-6 mb-8 relative z-20 items-center">
-                      <div className="w-28 h-28 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center text-slate-400 shrink-0 overflow-hidden shadow-inner border-2 border-white relative group">
+                    {/* Profile Picture overlay - adjusted size and position */}
+                    <div className="absolute top-[22%] right-[8%] w-[34%] flex flex-col items-center gap-4 z-40">
+                      <div className="w-full aspect-square ring-[6px] ring-white rounded-2xl overflow-hidden shadow-xl bg-slate-50 border border-slate-100/50">
                         {registration?.personalDetails?.profilePicture ? (
                           <img src={registration.personalDetails.profilePicture} alt="Profile" className="w-full h-full object-cover" />
                         ) : (
-                          <User size={56} className="group-hover:scale-110 transition-transform duration-500" />
+                          <div className="w-full h-full flex items-center justify-center text-slate-200 bg-slate-50"><User size={60} /></div>
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       </div>
-                      <div className="flex flex-col justify-center min-w-0 flex-1">
-                        <h5 className="text-2xl font-black text-slate-800 truncate leading-tight uppercase tracking-tight mb-2">{user.name}</h5>
-
-                        <div className="inline-flex mt-1 mb-4">
-                          <span className="px-3 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg shadow-md">
-                            {registration.personalDetails.category}
-                          </span>
-                        </div>
-
-                        <div className="space-y-2.5 bg-white/50 p-3 rounded-xl border border-white/60">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-indigo-50 rounded-md text-indigo-600"><MapPin size={12} /></div>
-                            <span className="text-[11px] font-bold text-slate-700 truncate">{registration.personalDetails.institution}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 bg-purple-50 rounded-md text-purple-600"><Layers size={12} /></div>
-                            <span className="text-[11px] font-bold text-slate-700 truncate">{registration.paperDetails.track}</span>
-                          </div>
-                        </div>
+                      
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 rounded-md shadow-md">
+                         <span className="text-[7px] font-black text-white uppercase tracking-[0.1em] whitespace-nowrap">Official Delegate</span>
                       </div>
                     </div>
 
-                    {/* Card Footer */}
-                    <div className="flex justify-between items-end relative z-20 mt-auto pt-6 border-t border-slate-200/50">
-                      <div className="flex bg-white/80 backdrop-blur-md p-3 rounded-2xl border border-white shadow-sm items-center gap-4">
-                        <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                          <QRCode value={registration._id} size={70} viewBox={`0 0 256 256`} style={{ height: "auto", maxWidth: "100%", width: "100%" }} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Participant ID</p>
-                          <p className="text-sm font-black text-slate-800 tracking-wider font-mono bg-slate-100 px-2 py-1 rounded-md">
+                    <div className="h-[40%] w-full px-10 flex flex-col justify-center pt-10">
+                      <div className="max-w-[60%]">
+                        <h5 className="text-xl font-black text-indigo-950 leading-tight uppercase tracking-tight line-clamp-2">{user.name}</h5>
+                        <div className="mt-1.5 space-y-1">
+                          <p className="text-xs font-black text-indigo-600 tracking-wider">
                             {registration.authorId || `#CMP-26-${registration._id.slice(-6).toUpperCase()}`}
                           </p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Date: 29.04.2026</p>
                         </div>
-                      </div>
-                      <div className="text-right flex flex-col items-end">
-                        <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mb-2 shadow-sm border border-green-100">
-                          <CheckCircle size={20} className="text-green-500" />
+
+                        {/* Barcode in previous badge location - increased size */}
+                        <div className="mt-6 flex flex-col gap-1.5 opacity-40">
+                          <div className="flex gap-[1.5px] h-8">
+                            {[2, 1, 4, 1, 2, 3, 1, 2, 1, 4, 2, 1, 1, 2, 3, 1, 2, 2, 1, 3, 1].map((w, i) => (
+                              <div key={i} style={{ width: `${w * 2}px` }} className="bg-slate-900" />
+                            ))}
+                          </div>
+                          <span className="text-[7px] font-black tracking-[0.3em]">{registration._id.slice(-10).toUpperCase()}</span>
                         </div>
-                        <p className="text-[9px] font-black text-green-600 uppercase tracking-widest bg-green-50 px-2 py-1 rounded-md">Official Entry</p>
                       </div>
                     </div>
                   </div>
-                </motion.div>
+                </div>
+
+                {/* ID Card Back - technical details */}
+                <div
+                  className="absolute inset-0 w-full h-full backface-hidden"
+                  style={{
+                    backfaceVisibility: 'hidden',
+                    transform: 'rotateY(180deg)'
+                  }}
+                >
+                  <div className="w-full h-full bg-[#1a237e] rounded-3xl shadow-2xl overflow-hidden relative border border-indigo-800 text-white p-8 px-10 flex gap-10 items-center">
+                    <div className="bg-white p-3 rounded-2xl shadow-2xl shrink-0 border-4 border-white/10 ring-1 ring-white/20">
+                      <QRCode value={registration._id} size={110} />
+                    </div>
+
+                    <div className="flex-1 h-full flex flex-col justify-between py-2">
+                      <div className="space-y-4">
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-1">Department</span>
+                          <span className="text-xs font-bold leading-tight line-clamp-1">{registration.personalDetails.department || 'Academic'}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-1">Institution</span>
+                          <span className="text-[10px] font-bold line-clamp-2 leading-tight uppercase opacity-90">{registration.personalDetails.institution}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-1">Presentation Track</span>
+                          <span className="text-xs font-bold leading-tight text-amber-400">{registration.paperDetails.track}</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-white/10 mt-auto flex justify-between items-end">
+                        <div>
+                          <p className="text-xs italic font-serif opacity-80 border-b border-indigo-400 px-2">Gowsik</p>
+                          <span className="text-[7px] font-black uppercase tracking-widest opacity-40 block mt-1.5">Authorized Sign</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[7px] font-black uppercase tracking-widest opacity-40 block mb-1">CIETM 2026 OFFICIAL</span>
+                          <div className="flex items-center gap-1 justify-end">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                            <span className="text-[9px] font-black tracking-widest uppercase">Verified</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-slate-500 px-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] animate-pulse flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-lg shadow-indigo-200"></div> Click card to flip
+                </p>
+                <div className="flex gap-2">
+                  <div className={`w-2 h-2 rounded-full transition-all duration-300 ${!isFlipped ? 'w-4 bg-indigo-600' : 'bg-slate-300'}`}></div>
+                  <div className={`w-2 h-2 rounded-full transition-all duration-300 ${isFlipped ? 'w-4 bg-indigo-600' : 'bg-slate-300'}`}></div>
+                </div>
               </div>
 
               <div className="flex gap-4">
@@ -1961,7 +1757,10 @@ const Dashboard = () => {
                   <Download size={18} /> Print pass
                 </button>
                 <button
-                  onClick={() => setShowIDCard(false)}
+                  onClick={() => {
+                    setShowIDCard(false);
+                    setIsFlipped(false);
+                  }}
                   className="px-8 py-4 bg-white text-slate-600 border border-slate-200 rounded-2xl font-bold hover:bg-slate-50 transition-all active:scale-95"
                 >
                   Close
@@ -1969,47 +1768,87 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Print-only version (cleaner for PDF export) */}
-            <div className="hidden print:block bg-white p-10">
-              <div className="w-[85.6mm] h-[53.98mm] border-[1px] border-slate-300 rounded-[3mm] p-[5mm] bg-white flex flex-col justify-between shadow-none mx-auto mb-10">
-                <div className="flex justify-between items-start border-b-[0.5mm] border-slate-100 pb-[2mm]">
-                  <div>
-                    <h4 className="text-[5mm] font-black text-slate-800 leading-none">CIETM <span className="text-indigo-600">2026</span></h4>
-                    <p className="text-[2.5mm] font-bold text-slate-400 uppercase tracking-widest mt-[0.5mm]">Conclave on Innovation</p>
+            {/* Print Layout: Both sides shown clearly on one page */}
+            <div className="hidden print:flex flex-col gap-10 bg-white p-10 h-screen justify-center">
+              {/* Card Front */}
+              <div className="w-[85.6mm] h-[53.98mm] bg-white rounded-[4mm] overflow-hidden relative border-[0.5mm] border-slate-200 mx-auto font-sans shadow-none">
+                <div className="h-[42%] w-full flex relative overflow-hidden">
+                  <div className="w-[45%] h-full bg-[#1a237e] relative z-10 flex flex-col justify-center px-[6mm]">
+                    <div className="flex flex-col items-center">
+                      < Award className="text-white mb-[1mm]" size={18} />
+                      <h4 className="text-white font-black text-[3.2mm] tracking-widest text-center leading-tight uppercase">CIETM<br />2026</h4>
+                    </div>
+                    <div className="absolute right-0 top-0 bottom-0 w-[12mm] bg-[#1a237e] transform translate-x-1/2 -skew-x-[20deg]"></div>
                   </div>
-                  <div className="w-[8mm] h-[8mm] bg-indigo-50 rounded-[1.5mm] flex items-center justify-center text-indigo-600 font-bold text-[3mm]">C</div>
+                  <div className="flex-1 h-full">
+                    <img src="/assets/ciet.jpeg" className="w-full h-full object-cover brightness-[0.95]" />
+                  </div>
                 </div>
-
-                <div className="flex gap-[4mm]">
-                  <div className="w-[18mm] h-[18mm] bg-slate-50 border-[0.3mm] border-slate-100 rounded-[2mm] flex items-center justify-center text-slate-300 overflow-hidden shrink-0">
+                <div className="absolute top-[26%] right-[8%] w-[33%] flex flex-col items-center gap-[4mm] z-40">
+                  <div className="w-full aspect-square ring-[1.2mm] ring-white rounded-[3mm] overflow-hidden bg-slate-100 border-[0.4mm] border-slate-200">
                     {registration?.personalDetails?.profilePicture ? (
-                      <img src={registration.personalDetails.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={registration.personalDetails.profilePicture} className="w-full h-full object-cover" />
                     ) : (
-                      <User size={32} />
+                      <div className="w-full h-full flex items-center justify-center text-slate-300"><User size={36} /></div>
                     )}
                   </div>
-                  <div className="flex flex-col justify-center">
-                    <h5 className="text-[4mm] font-black text-slate-800 truncate leading-tight uppercase">{user.name}</h5>
-                    <span className="text-[2.5mm] font-black text-indigo-600 uppercase tracking-tighter mb-[1mm]">{registration.personalDetails.category}</span>
-                    <p className="text-[2.5mm] font-bold text-slate-500">{registration.personalDetails.institution}</p>
+                  <div className="inline-block px-[3mm] py-[1.2mm] bg-indigo-600 rounded-[1mm]">
+                    <span className="text-white text-[1.8mm] font-black uppercase tracking-[0.5mm]">Official Delegate</span>
                   </div>
                 </div>
-
-                <div className="flex justify-between items-end">
-                  <div className="flex items-center gap-[3mm]">
-                    <div className="bg-white p-[1mm] border-[0.2mm] border-slate-100 rounded-[1.5mm]">
-                      <QRCode value={registration._id} size={45} style={{ height: "12mm", width: "12mm" }} />
-                    </div>
-                    <div>
-                      <p className="text-[2mm] font-black text-slate-400 uppercase tracking-widest mb-[0.5mm]">Participant ID</p>
-                      <p className="text-[3mm] font-black text-slate-800 tracking-wider font-mono">
+                <div className="h-[58%] w-full px-[10mm] flex flex-col justify-center pt-[10mm]">
+                  <div className="w-[60%]">
+                    <h5 className="text-[4.2mm] font-black text-indigo-950 uppercase leading-tight line-clamp-2">{user.name}</h5>
+                    <div className="mt-[2mm] space-y-[0.5mm]">
+                      <span className="text-[2.2mm] font-black text-indigo-600 tracking-widest block">
                         {registration.authorId || `#CMP-26-${registration._id.slice(-6).toUpperCase()}`}
-                      </p>
+                      </span>
+                      <span className="text-[1.8mm] font-bold text-slate-400 uppercase tracking-widest block">Date: 29.04.2026</span>
+                    </div>
+                    {/* Barcode - increased size */}
+                    <div className="mt-[6mm] flex flex-col gap-[1mm] opacity-40">
+                      <div className="flex gap-[0.3mm] h-[6mm]">
+                        {[2, 1, 4, 1, 2, 3, 1, 2, 1, 4, 2, 1, 1, 2, 3, 1, 2, 2, 1, 3, 1].map((w, i) => (
+                          <div key={i} style={{ width: `${w}mm` }} className="bg-slate-900" />
+                        ))}
+                      </div>
+                      <span className="text-[2mm] font-black tracking-[0.3em]">{registration._id.slice(-10).toUpperCase()}</span>
                     </div>
                   </div>
-                  <div className="text-right pb-[1mm]">
-                    <p className="text-[2.5mm] font-black text-blue-600 uppercase tracking-widest">Verified Delegate</p>
+                </div>
+                <div className="absolute left-0 bottom-0 bg-indigo-600 px-[5mm] py-[1.5mm] rounded-tr-[3mm]">
+                  <span className="text-white text-[2mm] font-black uppercase tracking-widest">Delegate Pass Front</span>
+                </div>
+              </div>
+
+              {/* Card Back */}
+              <div className="w-[85.6mm] h-[53.98mm] bg-[#1a237e] rounded-[4mm] overflow-hidden relative border-[0.5mm] border-indigo-900 mx-auto font-sans shadow-none text-white p-[8mm] px-[10mm] flex gap-[8mm] items-center">
+                <div className="bg-white p-[1.5mm] rounded-[3mm] shrink-0 border-[1mm] border-white/10">
+                  <QRCode value={registration._id} size={42} style={{ height: "18mm", width: "18mm" }} />
+                </div>
+                <div className="flex-1 flex flex-col justify-between py-[1mm]">
+                  <div className="space-y-[3mm]">
+                    <div className="flex flex-col text-[2.5mm]">
+                      <span className="font-black text-indigo-300 uppercase tracking-widest mb-[0.5mm]">Institution Name</span>
+                      <span className="font-bold uppercase line-clamp-2 leading-tight">{registration.personalDetails.institution}</span>
+                    </div>
+                    <div className="flex flex-col text-[2.5mm]">
+                      <span className="font-black text-indigo-300 uppercase tracking-widest mb-[0.5mm]">Department & Track</span>
+                      <span className="font-bold line-clamp-1 leading-tight">{registration.personalDetails.department} - {registration.paperDetails.track}</span>
+                    </div>
                   </div>
+                  <div className="pt-[4mm] mt-auto flex justify-between items-end border-t border-white/10">
+                    <div>
+                      <p className="text-[3mm] italic font-serif border-b-[0.2mm] border-indigo-400 opacity-70">Gowsik</p>
+                      <span className="text-[2.2mm] font-black uppercase opacity-50 block mt-[0.5mm]">Authorized Sign</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[3.2mm] font-bold text-amber-400">29.04.2026</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="absolute left-0 bottom-0 bg-indigo-500 px-[5mm] py-[1.5mm] rounded-tr-[3mm]">
+                  <span className="text-white text-[2mm] font-black uppercase tracking-widest">Delegate Pass Back</span>
                 </div>
               </div>
             </div>

@@ -20,7 +20,9 @@ const LoginPage = () => {
   const location = useLocation();
 
   const getRedirectPath = (role) => {
-    switch (role) {
+    if (!role) return '/dashboard';
+    const normalizedRole = role.toLowerCase().trim();
+    switch (normalizedRole) {
       case 'admin': return '/admin/dashboard';
       case 'chair': return '/chair/dashboard';
       case 'reviewer': return '/reviewer/dashboard';
@@ -28,7 +30,9 @@ const LoginPage = () => {
     }
   };
 
-  const redirect = location.state?.from || getRedirectPath(user?.role);
+  const redirect = (location.state?.from && location.state.from !== '/dashboard') 
+    ? location.state.from 
+    : getRedirectPath(user?.role);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -42,7 +46,9 @@ const LoginPage = () => {
     try {
       const userData = await login(email, password);
       toast.success("Login Successful!");
-      const target = location.state?.from || getRedirectPath(userData.role);
+      const target = (location.state?.from && location.state.from !== '/dashboard') 
+        ? location.state.from 
+        : getRedirectPath(userData.role);
       navigate(target);
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed");
@@ -72,7 +78,12 @@ const LoginPage = () => {
   const labelClass = "flex items-center gap-2 mb-1.5 font-bold text-slate-700 text-xs uppercase tracking-wide";
 
   if (authLoading || user) {
-    return <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-white"><div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div></div>;
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-white gap-6">
+        <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">Establishing Secure Session</p>
+      </div>
+    );
   }
 
   return (

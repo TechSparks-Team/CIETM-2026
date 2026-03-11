@@ -6,10 +6,11 @@ import {
   FileText, CheckCircle, Clock, AlertCircle,
   Settings, Bell, Download, Menu, X, Search, ChevronRight, LogOut, FileBadge, Lock,
   LayoutDashboard, Calendar, MapPin, ShieldCheck, Award, Layers,
-  Upload, Home, Edit2, Camera, User, CreditCard
+  Upload, Home, Edit2, Camera, User, CreditCard, TrendingUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SubmissionFormSingle from '../components/SubmissionFormSingle';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'react-qr-code';
 
@@ -133,6 +134,20 @@ const Dashboard = () => {
       setActiveTab('paper');
     }
   }, [registration, activeTab]);
+
+  const handleForceSync = async () => {
+    const loadingToast = toast.loading("Synchronizing dashboard...");
+    try {
+      await Promise.all([
+        fetchRegistration(),
+        fetchNotifications(),
+        fetchSettings()
+      ]);
+      toast.success("Dashboard synced", { id: loadingToast });
+    } catch (error) {
+      toast.error("Sync failed", { id: loadingToast });
+    }
+  };
 
   const handleDownload = () => {
     if (!registration) return;
@@ -343,12 +358,7 @@ const Dashboard = () => {
     );
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
-      <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-      <p className="text-slate-500 font-medium">Loading Dashboard...</p>
-    </div>
-  );
+  if (loading) return <DashboardSkeleton />;
 
   const overviewContainerVariants = {
     hidden: { opacity: 0 },
@@ -938,12 +948,27 @@ const Dashboard = () => {
               )}
 
               {/* Keywords Metadata */}
-              <div className="pt-6 border-t border-slate-50">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] block mb-3 pl-2">Paper Keywords</span>
-                <div className="flex flex-wrap gap-2 px-2">
-                  {registration?.paperDetails?.keywords?.map((keyword, i) => (
-                    <span key={i} className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-100">{keyword}</span>
-                  )) || <span className="text-sm font-medium text-slate-400 italic">No keywords specified</span>}
+              <div className="pt-6 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] block mb-3 pl-2">Paper Keywords</span>
+                  <div className="flex flex-wrap gap-2 px-2">
+                    {registration?.paperDetails?.keywords?.map((keyword, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-xs font-semibold border border-slate-100">{keyword}</span>
+                    )) || <span className="text-sm font-medium text-slate-400 italic">No keywords specified</span>}
+                  </div>
+                </div>
+                <div>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] block mb-3 pl-2">Academic Governance</span>
+                   <div className="space-y-3 px-2">
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                         <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Reviewer</span>
+                         <span className="text-xs font-bold text-slate-600">{registration?.paperDetails?.assignedReviewer?.name || 'In Evaluation Queue'}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                         <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Track Chair</span>
+                         <span className="text-xs font-bold text-slate-600">{registration?.paperDetails?.assignedChair?.name || 'Conference Chair'}</span>
+                      </div>
+                   </div>
                 </div>
               </div>
             </div>
@@ -1343,6 +1368,9 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-center gap-3 md:gap-5">
+            <button onClick={handleForceSync} className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-[0.65rem] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all">
+               <TrendingUp size={14} /> Force Sync
+            </button>
             {/* Small Logo for mobile right side if needed, or just stay as is */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 md:hidden">
               <div className="w-5 h-5 bg-indigo-600 rounded flex items-center justify-center text-[0.5rem] text-white font-bold">C</div>
@@ -1378,6 +1406,14 @@ const Dashboard = () => {
                 )}
               </div>
             </div>
+
+            <button
+               onClick={() => setShowLogoutModal(true)}
+               className="w-11 h-11 bg-red-50 rounded-xl border border-red-100 shadow-sm flex items-center justify-center text-red-600 cursor-pointer hover:bg-red-100 transition-all hover:shadow-md active:scale-95 transition-all"
+               title="Sign Out"
+            >
+               <LogOut size={20} />
+            </button>
           </div>
         </header>
 

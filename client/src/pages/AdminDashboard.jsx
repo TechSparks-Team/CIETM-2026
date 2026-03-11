@@ -7,17 +7,19 @@ import {
   XCircle, Search, Filter, ExternalLink, Home,
   LayoutDashboard, Download, PieChart, BarChart2,
   Settings, Bell, Mail, Shield, ChevronRight,
-  TrendingUp, IndianRupee, AlertCircle, CreditCard, Trash2, UserPlus
+  TrendingUp, IndianRupee, AlertCircle, CreditCard, Trash2, UserPlus, LogOut
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart as RePieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
 import toast from 'react-hot-toast';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { ShieldCheck, QrCode, ScanLine, Menu, X } from 'lucide-react';
+import { ShieldCheck, QrCode, ScanLine, Menu, X, CheckSquare, Square } from 'lucide-react';
+import { CONFERENCE_TRACKS, CATEGORY_AMOUNTS } from '../constants/conferenceData';
 
 const QRScanner = ({ onScan }) => {
   useEffect(() => {
@@ -94,7 +96,7 @@ const QRScanner = ({ onScan }) => {
 };
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview'); // overview, submissions, analytics, settings
   const [registrations, setRegistrations] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -115,6 +117,15 @@ const AdminDashboard = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasNewNotifications, setHasNewNotifications] = useState(true);
   const [manualPaymentAmount, setManualPaymentAmount] = useState('');
+  const [reviewers, setReviewers] = useState([]);
+  const [assigningReviewer, setAssigningReviewer] = useState(false);
+  const [autoAssigning, setAutoAssigning] = useState(false);
+  const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
+  const [trackTargetUser, setTrackTargetUser] = useState(null);
+  const [selectedTracks, setSelectedTracks] = useState([]);
+  const [promoteEmail, setPromoteEmail] = useState('');
+  const [userFilter, setUserFilter] = useState('All');
+
 
   const categoryAmounts = {
     'UG/PG STUDENTS': 500,
@@ -125,10 +136,10 @@ const AdminDashboard = () => {
 
   const calculateRequiredFee = (reg) => {
     if (!reg) return 0;
-    let total = categoryAmounts[reg.personalDetails?.category] || 1000;
+    let total = CATEGORY_AMOUNTS[reg.personalDetails?.category] || 1000;
     if (reg.teamMembers && reg.teamMembers.length > 0) {
       reg.teamMembers.forEach(member => {
-        total += categoryAmounts[member.category] || 1000;
+        total += CATEGORY_AMOUNTS[member.category] || 1000;
       });
     }
     return total;
@@ -152,6 +163,9 @@ const AdminDashboard = () => {
       setAnalytics(anaRes.data);
       setSettings(setRes.data);
       setUsers(userRes.data);
+      
+      // Filter reviewers
+      setReviewers(userRes.data.filter(u => u.role === 'reviewer'));
     } catch (error) {
       toast.error("Failed to sync dashboard data");
     } finally {
@@ -331,6 +345,52 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleUpdateReviewerTracks = async (reviewerId, tracks) => {
+    try {
+      await axios.put(`/api/auth/users/${reviewerId}/tracks`, { tracks }, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      toast.success("Reviewer expertise updated");
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to update reviewer tracks");
+    }
+  };
+
+  const handleAssignReviewer = async (regId, reviewerId) => {
+    setAssigningReviewer(true);
+    const loadingToast = toast.loading("Assigning reviewer...");
+    try {
+      await axios.put(`/api/registrations/${regId}/assign`, { reviewerId }, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      toast.success("Reviewer assigned successfully", { id: loadingToast });
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to assign reviewer", { id: loadingToast });
+    } finally {
+      setAssigningReviewer(false);
+    }
+  };
+
+  const handleAutoAssign = async () => {
+    if (!window.confirm("This will automatically assign reviewers to all submitted papers that don't have one yet based on their track specialties. Continue?")) return;
+    
+    setAutoAssigning(true);
+    const loadingToast = toast.loading("Automating paper assignments...");
+    try {
+      const { data } = await axios.post('/api/registrations/auto-assign', {}, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      toast.success(data.message, { id: loadingToast });
+      fetchAllData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Auto-assignment failed", { id: loadingToast });
+    } finally {
+      setAutoAssigning(false);
+    }
+  };
+
   const handleReview = async (id, status) => {
     const remarks = status === 'Rejected' ? prompt("Enter rejection reason:") : prompt("Enter remarks (optional):");
     if (status === 'Rejected' && remarks === null) return;
@@ -379,6 +439,11 @@ const AdminDashboard = () => {
 
   const filteredData = useMemo(() => {
     return registrations.filter(reg => {
+      // Only show submissions from users who are still authors
+      // (Hide registrations if they've been promoted to Reviewer, Chair, or Admin)
+      const isStillAuthor = reg.userId?.role === 'author';
+      if (!isStillAuthor) return false;
+
       const matchesFilter = filter === 'All' || reg.status === filter;
       const authorName = reg.personalDetails?.name || reg.userId?.name || '';
       const paperTitle = reg.paperDetails?.title || '';
@@ -402,23 +467,7 @@ const AdminDashboard = () => {
     visible: { opacity: 1, y: 0 }
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
-      <motion.div
-        animate={{ scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-        className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-indigo-100"
-      >
-        <Shield className="text-white" size={32} />
-      </motion.div>
-      <div className="flex gap-2 items-center">
-        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-        <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-      </div>
-      <p className="text-slate-500 font-bold mt-4 tracking-widest text-[10px] uppercase">Authenticating Admin Session</p>
-    </div>
-  );
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
@@ -492,6 +541,12 @@ const AdminDashboard = () => {
             <Link to="/" className="flex items-center justify-center gap-2 w-full py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">
               <Home size={12} /> Exit to Site
             </Link>
+            <button
+              onClick={logout}
+              className="flex items-center justify-center gap-2 w-full py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-bold mt-2 hover:bg-red-100 transition-all uppercase tracking-widest"
+            >
+              <LogOut size={12} /> Sign Out
+            </button>
           </div>
         </div>
       </aside>
@@ -528,8 +583,8 @@ const AdminDashboard = () => {
                 )}
               </button>
             </div>
-            <button onClick={fetchAllData} className="p-3 md:px-4 md:py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center">
-              <LayoutDashboard size={14} className="md:hidden" />
+            <button onClick={fetchAllData} className="p-3 md:px-4 md:py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2">
+              <TrendingUp size={14} />
               <span className="hidden md:inline">Force Sync</span>
             </button>
             <button title="Export to Excel" onClick={exportToExcel} className="p-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
@@ -548,6 +603,13 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Download ZIP</span>
+            </button>
+            <button
+              onClick={logout}
+              className="p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all shadow-sm flex items-center gap-2"
+              title="Sign Out"
+            >
+              <LogOut size={18} />
             </button>
           </div>
         </header>
@@ -683,6 +745,19 @@ const AdminDashboard = () => {
                       </button>
                     ))}
                   </div>
+                  <div className="flex-shrink-0">
+                    <button
+                      onClick={handleAutoAssign}
+                      disabled={autoAssigning}
+                      className={`h-full flex items-center gap-3 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm ${autoAssigning
+                          ? 'bg-slate-100 text-slate-400 border-slate-100'
+                          : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'
+                        }`}
+                    >
+                      <ShieldCheck size={18} className={autoAssigning ? 'animate-pulse' : ''} />
+                      {autoAssigning ? 'Automating...' : 'Auto-Assign Reviewers'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Submissions Table/List View */}
@@ -693,7 +768,8 @@ const AdminDashboard = () => {
                         <tr className="bg-slate-50/50 border-b border-slate-100">
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Primary Author</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Research Title</th>
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Track / Domain</th>
+                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Track</th>
+                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Reviewer</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Attendance</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
@@ -725,6 +801,24 @@ const AdminDashboard = () => {
                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded-md">
                                 {reg.paperDetails?.track?.substring(0, 15)}...
                               </span>
+                            </td>
+                            <td className="px-8 py-6">
+                               <select 
+                                 className="w-full max-w-[150px] bg-slate-50 border-none rounded-lg py-1 px-2 text-[10px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
+                                 value={reg.paperDetails?.assignedReviewer?._id || ''}
+                                 onChange={(e) => handleAssignReviewer(reg._id, e.target.value)}
+                                 disabled={assigningReviewer}
+                               >
+                                 <option value="">{reg.paperDetails?.assignedReviewer?.name || 'Assign...'}</option>
+                                 {reviewers.map(rev => {
+                                   const isOccupied = registrations.some(r => r._id !== reg._id && r.paperDetails?.assignedReviewer?._id === rev._id);
+                                   return (
+                                     <option key={rev._id} value={rev._id} disabled={isOccupied}>
+                                       {rev.name} {isOccupied ? '(Assigned)' : ''}
+                                     </option>
+                                   );
+                                 })}
+                               </select>
                             </td>
                             <td className="px-8 py-6">
                               <div className="flex items-center gap-2">
@@ -794,21 +888,40 @@ const AdminDashboard = () => {
                 className="max-w-7xl mx-auto"
               >
                 <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                  <div className="p-8 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-slate-50/50">
                     <div>
                       <h3 className="text-lg font-black text-slate-800">Registered Accounts</h3>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Manage platform access</p>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                        {users.length} Total Users
-                      </span>
-                      <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2"
-                      >
-                        <UserPlus size={14} /> Create User
-                      </button>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+                      <div className="flex w-full sm:w-auto bg-slate-100/50 p-1.5 rounded-xl border border-slate-200 overflow-x-auto">
+                        {['All', 'Author', 'Reviewer', 'Chair'].map(f => (
+                          <button
+                            key={f}
+                            onClick={() => setUserFilter(f)}
+                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                              userFilter === f 
+                                ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' 
+                                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                        <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                          {users.filter(u => u.role !== 'admin' && (userFilter === 'All' || u.role.toLowerCase() === userFilter.toLowerCase())).length} {userFilter === 'All' ? 'Accounts' : `${userFilter}s`}
+                        </span>
+                        <button
+                          onClick={() => setIsCreateModalOpen(true)}
+                          className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2 whitespace-nowrap shrink-0"
+                        >
+                          <UserPlus size={14} /> Create User
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div className="overflow-x-auto custom-scrollbar">
@@ -818,12 +931,16 @@ const AdminDashboard = () => {
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">User Profile</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contact Information</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Access Level</th>
+                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Specialized Tracks</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Joined Date</th>
                           <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Verification</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {users.map(u => (
+                        {users
+                          .filter(u => u.role !== 'admin')
+                          .filter(u => userFilter === 'All' || u.role.toLowerCase() === userFilter.toLowerCase())
+                          .map(u => (
                           <tr key={u._id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-8 py-6">
                               <div className="flex items-center gap-3">
@@ -832,7 +949,9 @@ const AdminDashboard = () => {
                                 </div>
                                 <div>
                                   <p className="text-sm font-black text-slate-800 leading-none">{u.name}</p>
-                                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">ID: ...{u._id.slice(-6)}</p>
+                                  <p className="text-[10px] font-bold text-indigo-600 mt-1 uppercase tracking-tighter font-mono">
+                                    {registrations.find(r => (r.userId?._id || r.userId) === u._id)?.authorId || `#USR-${u._id.slice(-6).toUpperCase()}`}
+                                  </p>
                                 </div>
                               </div>
                             </td>
@@ -845,18 +964,43 @@ const AdminDashboard = () => {
                                 value={u.role}
                                 disabled={u._id === user._id}
                                 onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
-                                className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border focus:outline-none transition-all cursor-pointer ${
-                                  u.role === 'admin' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 
-                                  u.role === 'chair' ? 'bg-purple-50 border-purple-100 text-purple-600' :
-                                  u.role === 'reviewer' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
-                                  'bg-slate-50 border-slate-100 text-slate-400'
-                                }`}
+                                className="appearance-none outline-none w-32 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all cursor-pointer shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] disabled:opacity-50 disabled:cursor-not-allowed bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_12px_center] bg-no-repeat"
                               >
-                                <option value="author">Author</option>
-                                <option value="reviewer">Reviewer</option>
-                                <option value="chair">Chair</option>
-                                <option value="admin">Admin</option>
+                                <option value="author" className="font-bold text-slate-700">Author</option>
+                                <option value="reviewer" className="font-bold text-slate-700">Reviewer</option>
+                                <option value="chair" className="font-bold text-slate-700">Chair</option>
                               </select>
+                            </td>
+                            <td className="px-8 py-6">
+                               <div className="flex flex-col items-start">
+                                  <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                                     {u.role === 'chair' || u.role === 'admin' ? (
+                                        <span className="text-[9px] font-bold text-slate-400 italic uppercase tracking-widest">All Domains</span>
+                                     ) : u.role === 'reviewer' ? (
+                                        (u.assignedTracks || []).length > 0 ? (
+                                           u.assignedTracks.map(t => (
+                                              <span key={t} className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-md text-[9px] font-black uppercase tracking-tighter border border-indigo-100/50">{t}</span>
+                                           ))
+                                        ) : (
+                                           <span className="text-[9px] font-bold text-slate-300 italic uppercase tracking-widest">General</span>
+                                        )
+                                     ) : (
+                                        <span className="text-[9px] font-bold text-slate-300 italic uppercase tracking-widest">Not Applicable</span>
+                                     )}
+                                  </div>
+                                  {u.role === 'reviewer' && (
+                                     <button 
+                                       onClick={() => {
+                                         setTrackTargetUser(u);
+                                         setSelectedTracks(u.assignedTracks || []);
+                                         setIsTrackModalOpen(true);
+                                       }}
+                                       className="mt-3 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-[8px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50/50 transition-all flex items-center gap-1.5 shadow-sm"
+                                     >
+                                       <ShieldCheck size={10} /> Edit Expertise
+                                     </button>
+                                  )}
+                               </div>
                             </td>
                             <td className="px-8 py-6 text-xs font-bold text-slate-500">
                               {new Date(u.createdAt).toLocaleDateString()}
@@ -1357,6 +1501,76 @@ const AdminDashboard = () => {
                     </form>
                   </div>
 
+                   {/* Administrative Control */}
+                  <div className="bg-white rounded-[2.5rem] border border-slate-200 p-6 md:p-10 shadow-sm col-span-1 lg:col-span-2">
+                    <h3 className="text-xl font-black text-slate-800 mb-6 md:mb-8 flex items-center gap-3">
+                      <Shield className="text-indigo-600" /> Administrative Control
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-4">Current Administrators</label>
+                        <div className="space-y-3">
+                          {users.filter(u => u.role === 'admin').map(adminUser => (
+                            <div key={adminUser._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                                  {adminUser.name?.charAt(0)}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-black text-slate-800 truncate">{adminUser.name} {adminUser._id === user._id && <span className="text-[8px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded ml-1 font-black">YOU</span>}</p>
+                                  <p className="text-[9px] font-bold text-slate-400 truncate tracking-tighter">{adminUser.email}</p>
+                                </div>
+                              </div>
+                              {adminUser._id !== user._id && (
+                                <button
+                                  onClick={() => handleRoleUpdate(adminUser._id, 'author')}
+                                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                  title="Revoke Admin Access"
+                                >
+                                  <LogOut size={14} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-4">Promote to Admin</label>
+                        <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100 flex-1 flex flex-col justify-center">
+                          <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed uppercase tracking-tight">
+                            Enter the email address of an existing user to grant them full system administrative privileges.
+                          </p>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                              type="email"
+                              placeholder="user@example.com"
+                              value={promoteEmail}
+                              onChange={(e) => setPromoteEmail(e.target.value)}
+                              className="w-full pl-12 pr-4 py-4 bg-white border border-indigo-100 rounded-2xl font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                          </div>
+                          <button
+                            onClick={() => {
+                              const targetUser = users.find(u => u.email === promoteEmail);
+                              if (targetUser) {
+                                handleRoleUpdate(targetUser._id, 'admin');
+                                setPromoteEmail('');
+                              } else {
+                                toast.error("User not found in system");
+                              }
+                            }}
+                            className="w-full mt-4 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:-translate-y-1 transition-all"
+                          >
+                            Grant Admin Access
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Danger Zone */}
                   <div className="bg-red-50/50 rounded-[2.5rem] border border-red-200 p-6 md:p-10 shadow-sm col-span-1 lg:col-span-2">
                     <h3 className="text-xl font-black text-red-800 mb-6 md:mb-8 flex items-center gap-3">
@@ -1790,6 +2004,87 @@ const AdminDashboard = () => {
                   {isCreatingAuthor ? 'Creating Account...' : 'Create Verified Account'}
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Track Selection Modal */}
+        {isTrackModalOpen && trackTargetUser && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTrackModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            ></motion.div>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              className="relative w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-indigo-50/30">
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">Reviewer Expertise</h3>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Select domains for {trackTargetUser.name}</p>
+                </div>
+                <button onClick={() => setIsTrackModalOpen(false)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-8 space-y-3">
+                {CONFERENCE_TRACKS.map(track => {
+                  const isSelected = selectedTracks.includes(track.id);
+                  return (
+                    <button
+                      key={track.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedTracks(selectedTracks.filter(t => t !== track.id));
+                        } else {
+                          setSelectedTracks([...selectedTracks, track.id]);
+                        }
+                      }}
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
+                        isSelected 
+                          ? 'bg-indigo-50 border-indigo-200 shadow-sm' 
+                          : 'bg-white border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
+                        isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-300'
+                      }`}>
+                        {isSelected ? <CheckSquare size={16} /> : <Square size={16} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <p className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}>
+                           {track.id}
+                         </p>
+                         <p className={`text-xs font-bold ${isSelected ? 'text-slate-800' : 'text-slate-500'}`}>
+                           {track.label}
+                         </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="p-8 pt-0 flex gap-3">
+                <button
+                  onClick={() => setIsTrackModalOpen(false)}
+                  className="flex-1 py-4 bg-slate-50 text-slate-500 rounded-2xl font-black text-xs uppercase tracking-[0.2em] border border-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleUpdateReviewerTracks(trackTargetUser._id, selectedTracks);
+                    setIsTrackModalOpen(false);
+                  }}
+                  className="flex-3 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 px-10"
+                >
+                  Save Expertise
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

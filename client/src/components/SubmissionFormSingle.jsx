@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { ChevronRight, Upload, CheckCircle, Plus, Trash2, Save, Send, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { CONFERENCE_TRACKS } from '../constants/conferenceData';
 
 const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
@@ -254,10 +255,9 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
             <div>
               <label className={labelClass}>Conference Track *</label>
               <select name="track" value={formData.track} onChange={handleChange} className={inputClass}>
-                <option value="CIDT">Track 1: Computing, Intelligence & Digital Technologies</option>
-                <option value="ESSI">Track 2: Engineering, Science & Sustainable Innovations</option>
-                <option value="EAHSS">Track 3: Education, Arts, Humanities & Social Sciences</option>
-                <option value="MBHSD">Track 4: Management, Business & Health Sciences</option>
+                {CONFERENCE_TRACKS.map(track => (
+                  <option key={track.id} value={track.id}>{track.label}</option>
+                ))}
               </select>
             </div>
           </div>

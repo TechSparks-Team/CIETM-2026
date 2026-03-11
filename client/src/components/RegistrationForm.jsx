@@ -4,6 +4,7 @@ import axios from 'axios';
 import { ChevronRight, ChevronLeft, Upload, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { CONFERENCE_TRACKS } from '../constants/conferenceData';
 
 const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess }) => {
   const { user, updateUser } = useAuth();
@@ -792,10 +793,9 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
             <div className={groupClass}>
               <label className={labelClass}>Select Track</label>
               <select name="track" value={formData.track} onChange={handleChange} className={inputClass}>
-                <option value="CIDT">Track 1: Computing, Intelligence & Digital Technologies</option>
-                <option value="ESSI">Track 2: Engineering, Science & Sustainable Innovations</option>
-                <option value="EAHSS">Track 3: Education, Arts, Humanities & Social Sciences</option>
-                <option value="MBHSD">Track 4: Management, Business & Health Sciences</option>
+                {CONFERENCE_TRACKS.map(track => (
+                  <option key={track.id} value={track.id}>{track.label}</option>
+                ))}
               </select>
             </div>
             <div className={groupClass}>

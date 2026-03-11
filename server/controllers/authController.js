@@ -381,12 +381,39 @@ const updateUserRole = async (req, res) => {
         const user = await User.findById(req.params.id);
 
         if (user) {
-            user.role = req.body.role || user.role;
+            const newRole = req.body.role || user.role;
+            
+            // Auto-assign first track (CIDT) if becoming a reviewer and has no tracks
+            if (newRole === 'reviewer' && user.role !== 'reviewer' && (!user.assignedTracks || user.assignedTracks.length === 0)) {
+                user.assignedTracks = ['CIDT'];
+            }
+            
+            user.role = newRole;
             await user.save();
             res.json({ message: 'User role updated successfully', user });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Update reviewer tracks
+// @route   PUT /api/auth/users/:id/tracks
+// @access  Private/Chair/Admin
+const updateReviewerTracks = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.assignedTracks = req.body.tracks || [];
+        await user.save();
+
+        res.json({ message: 'Reviewer tracks updated successfully', user });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -410,7 +437,8 @@ const adminCreateUser = async (req, res) => {
             password, // Mongoose pre-save hook on User will hash this
             phone,
             role: role || 'author',
-            isEmailVerified: true
+            isEmailVerified: true,
+            assignedTracks: (role === 'reviewer') ? ['CIDT'] : []
         });
 
         // If they were pending, remove them from pending
@@ -444,5 +472,6 @@ module.exports = {
     resetPassword,
     updatePassword,
     adminCreateUser,
-    updateUserRole
+    updateUserRole,
+    updateReviewerTracks
 };

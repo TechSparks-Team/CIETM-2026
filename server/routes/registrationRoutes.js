@@ -14,7 +14,9 @@ const {
     verifyEntry,
     updateProfilePicture,
     requestReupload,
-    handleReuploadRequest
+    handleReuploadRequest,
+    assignReviewer,
+    autoAssignReviewers
 } = require('../controllers/registrationController');
 const { protect, admin, authorize } = require('../middleware/authMiddleware');
 const { upload, uploadProfilePic } = require('../config/cloudinary');
@@ -33,6 +35,8 @@ router.post('/update-paper', protect, updatePaper);
 router.put('/profile-picture', protect, updateProfilePicture);
 router.post('/:id/request-reupload', protect, requestReupload);
 router.post('/:id/handle-reupload-request', protect, authorize('admin', 'chair'), handleReuploadRequest);
+router.put('/:id/assign', protect, authorize('admin', 'chair'), assignReviewer);
+router.post('/auto-assign', protect, authorize('admin', 'chair'), autoAssignReviewers);
 
 // File upload route
 router.post('/upload', protect, upload.single('paper'), (req, res) => {

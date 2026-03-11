@@ -58,6 +58,14 @@ const registrationSchema = new mongoose.Schema({
             default: 'Draft'
         },
         reviewerComments: String,
+        assignedReviewer: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        assignedChair: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
         reuploadRequestStatus: {
             type: String,
             enum: ['None', 'Pending', 'Approved', 'Rejected'],

@@ -108,7 +108,8 @@ const Navbar = () => {
   ];
   const getDashboardLink = () => {
     if (!user) return '/login';
-    switch (user.role) {
+    const normalizedRole = user.role?.toLowerCase().trim();
+    switch (normalizedRole) {
       case 'admin': return '/admin/dashboard';
       case 'chair': return '/chair/dashboard';
       case 'reviewer': return '/reviewer/dashboard';

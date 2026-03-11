@@ -7,24 +7,27 @@ import {
   XCircle, Search, Home,
   LayoutDashboard, Award,
   Settings, Bell, Shield, ChevronRight,
-  TrendingUp, Download, Menu, X, Edit2
+  TrendingUp, Download, Menu, X, Edit2, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import DashboardSkeleton from '../components/DashboardSkeleton';
 
 const ReviewerDashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
+    setRefreshing(true);
     try {
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
       // Reviewers can see all registrations for now or a prioritized set
@@ -34,6 +37,7 @@ const ReviewerDashboard = () => {
        toast.error("Failed to sync dashboard data");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -56,13 +60,17 @@ const ReviewerDashboard = () => {
   };
 
   const filteredData = registrations.filter(reg => {
+    // Only show submissions from users who are still authors
+    const isStillAuthor = reg.userId?.role === 'author';
+    if (!isStillAuthor) return false;
+
     const authorName = reg.personalDetails?.name || reg.userId?.name || '';
     const paperTitle = reg.paperDetails?.title || '';
     return authorName.toLowerCase().includes(search.toLowerCase()) ||
            paperTitle.toLowerCase().includes(search.toLowerCase());
   }).filter(reg => reg.status !== 'Draft'); // Reviewers don't see drafts
 
-  if (loading) return <div className="flex items-center justify-center h-screen bg-slate-50">Loading Reviewer Dashboard...</div>;
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
@@ -103,6 +111,12 @@ const ReviewerDashboard = () => {
           <Link to="/" className="flex items-center justify-center gap-2 w-full py-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors">
             <Home size={12} /> Exit to Site
           </Link>
+          <button
+            onClick={logout}
+            className="flex items-center justify-center gap-2 w-full py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-bold mt-2 hover:bg-red-100 transition-all uppercase tracking-widest"
+          >
+            <LogOut size={12} /> Sign Out
+          </button>
         </div>
       </aside>
 
@@ -114,7 +128,18 @@ const ReviewerDashboard = () => {
             <h1 className="text-xl font-black text-slate-800 uppercase tracking-tight">{activeTab}</h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-xs font-bold text-slate-400">Reviewer: {user?.name}</span>
+            {refreshing && <div className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>}
+            <button onClick={fetchData} className="p-3 md:px-4 md:py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2">
+               <TrendingUp size={14} /> Force Sync
+            </button>
+            <span className="text-xs font-bold text-slate-400 hidden sm:inline">Reviewer: {user?.name}</span>
+            <button
+              onClick={logout}
+              className="p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all shadow-sm flex items-center gap-2"
+              title="Sign Out"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </header>
 

@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema({
         enum: ['author', 'admin', 'reviewer', 'chair'],
         default: 'author'
     },
+    assignedTracks: {
+        type: [String],
+        default: []
+    },
     phone: {
         type: String
     },

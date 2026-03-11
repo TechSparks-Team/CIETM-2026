@@ -109,7 +109,9 @@ const submitRegistration = async (req, res) => {
 // @access  Private
 const getMyRegistration = async (req, res) => {
     try {
-        const registration = await Registration.findOne({ userId: req.user._id });
+        const registration = await Registration.findOne({ userId: req.user._id })
+            .populate('paperDetails.assignedReviewer', 'name email role')
+            .populate('paperDetails.assignedChair', 'name email role');
         res.json(registration);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -121,7 +123,10 @@ const getMyRegistration = async (req, res) => {
 // @access  Admin
 const getAllRegistrations = async (req, res) => {
     try {
-        const registrations = await Registration.find({}).populate('userId', 'name email phone');
+        const registrations = await Registration.find({})
+            .populate('userId', 'name email phone role')
+            .populate('paperDetails.assignedReviewer', 'name email role')
+            .populate('paperDetails.assignedChair', 'name email role');
         res.json(registrations);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -580,6 +585,110 @@ const updateProfilePicture = async (req, res) => {
     }
 };
 
+// @desc    Assign reviewer to registration
+// @route   PUT /api/registrations/:id/assign
+// @access  Private/Chair/Admin
+const assignReviewer = async (req, res) => {
+    const { reviewerId } = req.body;
+    try {
+        const registration = await Registration.findById(req.params.id);
+        if (!registration) return res.status(404).json({ message: 'Registration not found' });
+
+        registration.paperDetails.assignedReviewer = reviewerId;
+        await registration.save();
+
+        const reviewer = await User.findById(reviewerId);
+        if (reviewer) {
+             await createNotification(
+                reviewer._id,
+                'New Paper Assigned',
+                `A new paper titled "${registration.paperDetails.title}" has been assigned to you for review.`,
+                'info',
+                '/reviewer/dashboard'
+            );
+        }
+
+        res.json({ message: 'Reviewer assigned successfully', registration });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Auto assign reviewers to papers without one
+// @route   POST /api/registrations/auto-assign
+// @access  Private/Chair/Admin
+const autoAssignReviewers = async (req, res) => {
+    try {
+        // Find registrations that are submitted and don't have a reviewer
+        const registrations = await Registration.find({
+            status: { $in: ['Submitted', 'Under Review'] },
+            'paperDetails.assignedReviewer': { $exists: false }
+        });
+
+        const reviewers = await User.find({ role: 'reviewer' });
+
+        if (reviewers.length === 0) {
+            return res.status(400).json({ message: 'No reviewers found to assign' });
+        }
+
+        let assignedCount = 0;
+        const results = [];
+
+        // Fetch all current assignments to enforce 1 paper per reviewer limit
+        const allRegistrations = await Registration.find({ 'paperDetails.assignedReviewer': { $exists: true, $ne: null } });
+        const occupiedReviewerIds = new Set(allRegistrations.map(r => r.paperDetails.assignedReviewer.toString()));
+
+        for (const reg of registrations) {
+            const paperTrack = reg.paperDetails.track;
+            // Find reviewers who match track AND are not currently assigned to any paper
+            let matchingReviewers = reviewers.filter(r => 
+                r.assignedTracks && 
+                r.assignedTracks.includes(paperTrack) &&
+                !occupiedReviewerIds.has(r._id.toString())
+            );
+            
+            // Fallback to any unassigned reviewer if no track match is available
+            if (matchingReviewers.length === 0) {
+                matchingReviewers = reviewers.filter(r => !occupiedReviewerIds.has(r._id.toString()));
+            }
+
+            // If absolutely no reviewers are available, we must skip to prevent multi-assignments
+            if (matchingReviewers.length === 0) {
+                results.push({
+                    success: false,
+                    paperId: reg._id,
+                    title: reg.paperDetails.title,
+                    message: 'Capacity reached: No unassigned reviewers available'
+                });
+                continue;
+            }
+
+            const selectedReviewer = matchingReviewers[Math.floor(Math.random() * matchingReviewers.length)];
+            
+            // Mark the reviewer as occupied immediately for the next loop iteration
+            occupiedReviewerIds.add(selectedReviewer._id.toString());
+
+            reg.paperDetails.assignedReviewer = selectedReviewer._id;
+            await reg.save();
+            assignedCount++;
+
+            await createNotification(
+                selectedReviewer._id,
+                'Auto Paper Assignment',
+                `A new paper titled "${reg.paperDetails.title}" has been auto-assigned to you based on your track expertise.`,
+                'info',
+                '/reviewer/dashboard'
+            );
+            
+            results.push({ paper: reg.paperDetails.title, reviewer: selectedReviewer.name });
+        }
+
+        res.json({ message: `Successfully assigned ${assignedCount} papers`, results });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     saveDraft,
     submitRegistration,
@@ -594,5 +703,7 @@ module.exports = {
     verifyEntry,
     updateProfilePicture,
     requestReupload,
-    handleReuploadRequest
+    handleReuploadRequest,
+    assignReviewer,
+    autoAssignReviewers
 };

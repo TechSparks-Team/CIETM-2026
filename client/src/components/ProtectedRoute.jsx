@@ -13,8 +13,12 @@ const ProtectedRoute = ({ children, role }) => {
     return <Navigate to="/login" state={{ from: window.location.pathname + window.location.search }} />;
   }
 
-  if (role && user.role !== role) {
-    return <Navigate to="/" />;
+  if (role && user.role?.toLowerCase().trim() !== role.toLowerCase().trim()) {
+    const r = user.role?.toLowerCase().trim();
+    if (r === 'admin') return <Navigate to="/admin/dashboard" />;
+    if (r === 'chair') return <Navigate to="/chair/dashboard" />;
+    if (r === 'reviewer') return <Navigate to="/reviewer/dashboard" />;
+    return <Navigate to="/dashboard" />;
   }
 
   return children;

@@ -374,10 +374,10 @@ const AdminDashboard = () => {
   };
 
   const handleAutoAssign = async () => {
-    if (!window.confirm("This will automatically assign reviewers to all submitted papers that don't have one yet based on their track specialties. Continue?")) return;
+    if (!window.confirm("This will force-assign any remaining unassigned papers to available reviewers, even if tracks don't match. Continue?")) return;
     
     setAutoAssigning(true);
-    const loadingToast = toast.loading("Automating paper assignments...");
+    const loadingToast = toast.loading("Syncing assignments...");
     try {
       const { data } = await axios.post('/api/registrations/auto-assign', {}, {
         headers: { Authorization: `Bearer ${user?.token}` }
@@ -755,7 +755,7 @@ const AdminDashboard = () => {
                         }`}
                     >
                       <ShieldCheck size={18} className={autoAssigning ? 'animate-pulse' : ''} />
-                      {autoAssigning ? 'Automating...' : 'Auto-Assign Reviewers'}
+                      {autoAssigning ? 'Syncing...' : 'Sync Unassigned Papers'}
                     </button>
                   </div>
                 </div>
@@ -809,15 +809,12 @@ const AdminDashboard = () => {
                                  onChange={(e) => handleAssignReviewer(reg._id, e.target.value)}
                                  disabled={assigningReviewer}
                                >
-                                 <option value="">{reg.paperDetails?.assignedReviewer?.name || 'Assign...'}</option>
-                                 {reviewers.map(rev => {
-                                   const isOccupied = registrations.some(r => r._id !== reg._id && r.paperDetails?.assignedReviewer?._id === rev._id);
-                                   return (
-                                     <option key={rev._id} value={rev._id} disabled={isOccupied}>
-                                       {rev.name} {isOccupied ? '(Assigned)' : ''}
-                                     </option>
-                                   );
-                                 })}
+                                 <option value="">{reg.paperDetails?.assignedReviewer ? 'Unassign Reviewer' : 'Assign Reviewer...'}</option>
+                                 {reviewers.map(rev => (
+                                   <option key={rev._id} value={rev._id}>
+                                     {rev.name}
+                                   </option>
+                                 ))}
                                </select>
                             </td>
                             <td className="px-8 py-6">
@@ -959,17 +956,24 @@ const AdminDashboard = () => {
                               <p className="text-xs font-bold text-slate-700">{u.email}</p>
                               <p className="text-[10px] font-bold text-slate-400 mt-0.5">{u.phone || 'No phone provided'}</p>
                             </td>
-                            <td className="px-8 py-6">
-                              <select
-                                value={u.role}
-                                disabled={u._id === user._id}
-                                onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
-                                className="appearance-none outline-none w-32 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all cursor-pointer shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] disabled:opacity-50 disabled:cursor-not-allowed bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_12px_center] bg-no-repeat"
-                              >
-                                <option value="author" className="font-bold text-slate-700">Author</option>
-                                <option value="reviewer" className="font-bold text-slate-700">Reviewer</option>
-                                <option value="chair" className="font-bold text-slate-700">Chair</option>
-                              </select>
+                            <td className="px-8 py-6">                               <div className="flex flex-col gap-2">
+                                 <select
+                                   value={u.role}
+                                   disabled={u._id === user._id}
+                                   onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
+                                   className="appearance-none outline-none w-32 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all cursor-pointer shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] disabled:opacity-50 disabled:cursor-not-allowed bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_12px_center] bg-no-repeat"
+                                 >
+                                   <option value="author" className="font-bold text-slate-700">Author</option>
+                                   <option value="reviewer" className="font-bold text-slate-700">Reviewer</option>
+                                   <option value="chair" className="font-bold text-slate-700">Chair</option>
+                                 </select>
+
+                                 {u.role === 'reviewer' && (
+                                   <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 flex items-center justify-center gap-1.5 w-max">
+                                     <FileCheck size={10} /> {registrations.filter(r => (r.paperDetails?.assignedReviewer?._id || r.paperDetails?.assignedReviewer) === u._id).length} Active Load
+                                   </span>
+                                 )}
+                               </div>
                             </td>
                             <td className="px-8 py-6">
                                <div className="flex flex-col items-start">
@@ -1399,6 +1403,20 @@ const AdminDashboard = () => {
                           className={`w-14 h-8 rounded-full transition-all relative ${settings.onlinePaymentEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
                         >
                           <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.onlinePaymentEnabled ? 'left-7' : 'left-1'}`}></div>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div>
+                          <p className="text-sm font-black text-slate-800">Auto-Assign Reviewers</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Enable/Disable background assignment engine</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, autoAssignEnabled: !settings.autoAssignEnabled })}
+                          className={`w-14 h-8 rounded-full transition-all relative ${settings.autoAssignEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
+                        >
+                          <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.autoAssignEnabled ? 'left-7' : 'left-1'}`}></div>
                         </button>
                       </div>
 

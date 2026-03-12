@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FileText, CheckCircle, Clock, AlertCircle,
-  Settings, Bell, Download, Menu, X, Search, ChevronRight, LogOut, FileBadge, Lock,
+  Settings, Bell, Download, Menu, X, Search, ChevronRight, LogOut, Lock,
   LayoutDashboard, Calendar, MapPin, ShieldCheck, Award, Layers,
   Upload, Home, Edit2, Camera, User, CreditCard, TrendingUp
 } from 'lucide-react';
@@ -1191,7 +1191,7 @@ const Dashboard = () => {
         <div className="p-6 bg-slate-50/80 rounded-2xl border border-slate-100/50 mb-8 max-w-sm mx-auto">
           <div className="flex items-center gap-4 opacity-50">
             <div className="shrink-0 w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-slate-400">
-              <FileBadge size={24} />
+              <Award size={24} />
             </div>
             <div className="text-left flex-1 min-w-0">
               <h4 className="font-bold text-slate-700 truncate">Participation_Certificate.pdf</h4>
@@ -1298,7 +1298,7 @@ const Dashboard = () => {
             { id: 'payment', icon: CreditCard, label: 'Payments' },
             { id: 'notifications', icon: Bell, label: 'Updates' },
             { id: 'idcard', icon: Award, label: 'ID Card' },
-            { id: 'certificate', icon: FileBadge, label: 'E-Certificate' },
+            { id: 'certificate', icon: Award, label: 'E-Certificate' },
             { id: 'settings', icon: Settings, label: 'Settings' }
           ].map((item) => (
             <button

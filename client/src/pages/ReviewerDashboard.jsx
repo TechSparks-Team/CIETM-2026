@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import {
-  FileBadge, Clock, CheckCircle,
+  FileText, Clock, CheckCircle,
   XCircle, Search, Home,
   LayoutDashboard, Award,
   Settings, Bell, Shield, ChevronRight,
@@ -21,6 +21,29 @@ const ReviewerDashboard = () => {
   const [search, setSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [profileData, setProfileData] = useState({
+    name: user?.name || '',
+    department: user?.department || '',
+    college: user?.college || '',
+    password: ''
+  });
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+       axios.get('/api/auth/profile', {
+         headers: { Authorization: `Bearer ${user.token}` }
+       }).then(res => {
+          setProfileData({
+             name: res.data.name || '',
+             department: res.data.department || '',
+             college: res.data.college || '',
+             password: ''
+          });
+       }).catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchData();
@@ -59,14 +82,34 @@ const ReviewerDashboard = () => {
     }
   };
 
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setUpdatingProfile(true);
+    const loadingToast = toast.loading("Updating profile...");
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.put('/api/auth/profile', profileData, config);
+      toast.success("Profile updated successfully", { id: loadingToast });
+      setProfileData({ ...profileData, password: '' });
+    } catch (error) {
+      toast.error("Failed to update profile", { id: loadingToast });
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
   const filteredData = registrations.filter(reg => {
     // Only show submissions from users who are still authors
     const isStillAuthor = reg.userId?.role === 'author';
     if (!isStillAuthor) return false;
 
-    const authorName = reg.personalDetails?.name || reg.userId?.name || '';
+    // Security Check: Only show papers actively assigned to THIS reviewer
+    const assignedReviewerId = reg.paperDetails?.assignedReviewer?._id || reg.paperDetails?.assignedReviewer;
+    if (assignedReviewerId !== user?._id) return false;
+
+    const paperID = reg.personalDetails?.authorId || '';
     const paperTitle = reg.paperDetails?.title || '';
-    return authorName.toLowerCase().includes(search.toLowerCase()) ||
+    return paperID.toLowerCase().includes(search.toLowerCase()) ||
            paperTitle.toLowerCase().includes(search.toLowerCase());
   }).filter(reg => reg.status !== 'Draft'); // Reviewers don't see drafts
 
@@ -79,7 +122,7 @@ const ReviewerDashboard = () => {
         <div className="p-8 pb-4">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-              <FileBadge size={20} />
+              <FileText size={20} />
             </div>
             <div>
               <h2 className="text-lg font-black tracking-tighter text-slate-800 leading-none">CIETM</h2>
@@ -91,6 +134,7 @@ const ReviewerDashboard = () => {
             {[
               { id: 'overview', label: 'Overview', icon: LayoutDashboard },
               { id: 'assigned', label: 'My Reviews', icon: Award },
+              { id: 'settings', label: 'Settings', icon: Settings },
             ].map(item => (
               <button
                 key={item.id}
@@ -163,7 +207,7 @@ const ReviewerDashboard = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="text"
-                  placeholder="Search submissions..."
+                  placeholder="Search by ID or Title..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-12 pr-6 py-4 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:border-indigo-500 font-bold text-sm"
@@ -174,7 +218,7 @@ const ReviewerDashboard = () => {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Author</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Paper ID</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
@@ -184,10 +228,15 @@ const ReviewerDashboard = () => {
                     {filteredData.map(reg => (
                       <tr key={reg._id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
-                          <p className="text-sm font-bold text-slate-800">{reg.personalDetails?.name || reg.userId?.name}</p>
+                          <p className="text-sm font-bold text-slate-800">{reg.personalDetails?.authorId || 'N/A'}</p>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-slate-600 truncate max-w-xs">{reg.paperDetails?.title}</p>
+                          <p className="text-sm font-bold text-slate-700 truncate max-w-xs">{reg.paperDetails?.title || 'Untitled Submission'}</p>
+                          {reg.paperDetails?.track && (
+                            <span className="mt-1.5 inline-block px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[250px] shadow-sm">
+                              {reg.paperDetails.track}
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${
@@ -218,6 +267,68 @@ const ReviewerDashboard = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="max-w-2xl mx-auto space-y-8">
+              <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-sm">
+                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3">
+                   <Settings className="text-indigo-600" /> Account Settings
+                </h3>
+                <form onSubmit={handleProfileUpdate} className="space-y-6">
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Full Name</label>
+                     <input
+                       type="text"
+                       value={profileData.name}
+                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                       className="w-full bg-slate-50 border border-slate-100 p-3.5 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                       required
+                     />
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Department</label>
+                        <input
+                          type="text"
+                          value={profileData.department}
+                          onChange={(e) => setProfileData({ ...profileData, department: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-100 p-3.5 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          placeholder="e.g. Computer Science"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">College/Institution</label>
+                        <input
+                          type="text"
+                          value={profileData.college}
+                          onChange={(e) => setProfileData({ ...profileData, college: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-100 p-3.5 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          placeholder="e.g. CIET"
+                        />
+                      </div>
+                   </div>
+                   <div className="pt-4 border-t border-slate-100">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">New Password (Optional)</label>
+                     <input
+                       type="password"
+                       placeholder="Leave blank to keep current password"
+                       value={profileData.password}
+                       onChange={(e) => setProfileData({ ...profileData, password: e.target.value })}
+                       className="w-full bg-slate-50 border border-slate-100 p-3.5 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                     />
+                   </div>
+                   <div className="pt-4">
+                     <button
+                       disabled={updatingProfile}
+                       className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:-translate-y-1 transition-all disabled:opacity-50"
+                     >
+                       {updatingProfile ? 'Saving...' : 'Update Account Profile'}
+                     </button>
+                   </div>
+                </form>
               </div>
             </div>
           )}

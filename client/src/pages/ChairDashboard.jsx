@@ -99,6 +99,28 @@ const ChairDashboard = () => {
   const [isTrackModalOpen, setIsTrackModalOpen] = useState(false);
   const [trackTargetUser, setTrackTargetUser] = useState(null);
   const [selectedTracks, setSelectedTracks] = useState([]);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: user?.name || '',
+    department: user?.department || '',
+    college: user?.college || '',
+    password: ''
+  });
+
+  useEffect(() => {
+    if (user) {
+       axios.get('/api/auth/profile', {
+         headers: { Authorization: `Bearer ${user.token}` }
+       }).then(res => {
+          setProfileData({
+             name: res.data.name || '',
+             department: res.data.department || '',
+             college: res.data.college || '',
+             password: ''
+          });
+       }).catch(() => {});
+    }
+  }, [user]);
 
   const categoryAmounts = {
     'UG/PG STUDENTS': 500,
@@ -139,6 +161,22 @@ const ChairDashboard = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setUpdatingProfile(true);
+    const loadingToast = toast.loading("Updating profile...");
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.put('/api/auth/profile', profileData, config);
+      toast.success("Profile updated successfully", { id: loadingToast });
+      setProfileData({ ...profileData, password: '' });
+    } catch (error) {
+      toast.error("Failed to update profile", { id: loadingToast });
+    } finally {
+      setUpdatingProfile(false);
     }
   };
 
@@ -266,10 +304,10 @@ const ChairDashboard = () => {
   };
 
   const handleAutoAssign = async () => {
-    if (!window.confirm("This will automatically assign reviewers to all submitted papers that don't have one yet based on their track specialties. Continue?")) return;
+    if (!window.confirm("This will force-assign any remaining unassigned papers to available reviewers, even if tracks don't match. Continue?")) return;
     
     setAutoAssigning(true);
-    const loadingToast = toast.loading("Automating paper assignments...");
+    const loadingToast = toast.loading("Syncing assignments...");
     try {
       const { data } = await axios.post('/api/registrations/auto-assign', {}, {
         headers: { Authorization: `Bearer ${user?.token}` }
@@ -337,6 +375,7 @@ const ChairDashboard = () => {
               { id: 'entry', label: 'On-site Entry', icon: ScanLine },
               { id: 'updates', label: 'Pending Updates', icon: Bell },
               { id: 'assignments', label: 'Reviewers', icon: Users },
+              { id: 'settings', label: 'Settings', icon: Settings },
             ].map(item => (
               <button
                 key={item.id}
@@ -459,7 +498,7 @@ const ChairDashboard = () => {
                       }`}
                   >
                     <ShieldCheck size={18} className={autoAssigning ? 'animate-pulse' : ''} />
-                    {autoAssigning ? 'Automating...' : 'Auto-Assign Reviewers'}
+                    {autoAssigning ? 'Syncing...' : 'Sync Unassigned Papers'}
                   </button>
                 </div>
               </div>
@@ -506,27 +545,19 @@ const ChairDashboard = () => {
                              </span>
                           </td>
                           <td className="px-8 py-6">
-                            <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-[10px] font-black uppercase tracking-tighter shadow-sm border border-indigo-100/50 shrink-0">REV</div>
-                                  <div className="flex-1 min-w-0">
-                                    <select 
-                                      className="w-full bg-slate-50 border-none rounded-lg py-1 px-2 text-[11px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
-                                      value={reg.paperDetails?.assignedReviewer?._id || ''}
-                                      onChange={(e) => handleAssignReviewer(reg._id, e.target.value)}
-                                      disabled={assigningReviewer}
-                                    >
-                                      <option value="">{reg.paperDetails?.assignedReviewer?.name || 'Assign Reviewer...'}</option>
-                                      {reviewers.map(rev => {
-                                        const isOccupied = registrations.some(r => r._id !== reg._id && r.paperDetails?.assignedReviewer?._id === rev._id);
-                                        return (
-                                          <option key={rev._id} value={rev._id} disabled={isOccupied}>
-                                            {rev.name} {isOccupied ? '(Assigned)' : ''}
-                                          </option>
-                                        );
-                                      })}
-                                    </select>
-                                  </div>
-                               </div>
+                               <select 
+                                 className="w-full max-w-[150px] bg-slate-50 border-none rounded-lg py-1 px-2 text-[10px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
+                                 value={reg.paperDetails?.assignedReviewer?._id || ''}
+                                 onChange={(e) => handleAssignReviewer(reg._id, e.target.value)}
+                                 disabled={assigningReviewer}
+                               >
+                                 <option value="">{reg.paperDetails?.assignedReviewer ? 'Unassign Reviewer' : 'Assign Reviewer...'}</option>
+                                 {reviewers.map(rev => (
+                                   <option key={rev._id} value={rev._id}>
+                                     {rev.name}
+                                   </option>
+                                 ))}
+                               </select>
                           </td>
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-2">
@@ -661,6 +692,7 @@ const ChairDashboard = () => {
                          <thead>
                             <tr className="bg-slate-50/50 border-b border-slate-100">
                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reviewer</th>
+                               <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Current Load</th>
                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Specialized Tracks</th>
                                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
                             </tr>
@@ -676,6 +708,15 @@ const ChairDashboard = () => {
                                            <div className="text-[10px] font-bold text-slate-400 mt-1">{rev.email}</div>
                                         </div>
                                      </div>
+                                  </td>
+                                  <td className="px-8 py-5 text-center">
+                                     <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black ${
+                                       registrations.filter(r => r.paperDetails?.assignedReviewer?._id === rev._id).length > 0 
+                                         ? 'bg-blue-50 text-blue-600 border border-blue-100' 
+                                         : 'bg-slate-50 text-slate-400 border border-slate-100'
+                                     }`}>
+                                       {registrations.filter(r => r.paperDetails?.assignedReviewer?._id === rev._id).length} Papers
+                                     </span>
                                   </td>
                                   <td className="px-8 py-5">
                                      <div className="flex flex-wrap gap-1.5">
@@ -714,6 +755,72 @@ const ChairDashboard = () => {
                 </div>
              </div>
           )}
+
+          {activeTab === 'settings' && (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-2xl mx-auto space-y-8 pb-10">
+              <div className="bg-white rounded-[2.5rem] border border-slate-200 p-6 md:p-10 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-[100px] -z-0"></div>
+                <h3 className="text-xl md:text-2xl font-black text-slate-800 mb-6 flex items-center gap-3 relative z-10">
+                   <Settings className="text-indigo-600" /> Account Profile
+                </h3>
+                <form onSubmit={handleProfileUpdate} className="space-y-6 relative z-10">
+                   <div>
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Chair Name</label>
+                     <input
+                       type="text"
+                       value={profileData.name}
+                       onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                       className="w-full bg-slate-50 border border-slate-100 p-3.5 md:p-4 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                       required
+                     />
+                   </div>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Department</label>
+                        <input
+                          type="text"
+                          value={profileData.department}
+                          onChange={(e) => setProfileData({ ...profileData, department: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-100 p-3.5 md:p-4 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          placeholder="e.g. Mechanical Engineering"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">College/Institution</label>
+                        <input
+                          type="text"
+                          value={profileData.college}
+                          onChange={(e) => setProfileData({ ...profileData, college: e.target.value })}
+                          className="w-full bg-slate-50 border border-slate-100 p-3.5 md:p-4 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                          placeholder="e.g. CIET"
+                        />
+                      </div>
+                   </div>
+                   <div className="pt-4 border-t border-slate-100">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Change Password</label>
+                     <input
+                       type="password"
+                       placeholder="Leave empty to keep current"
+                       value={profileData.password}
+                       onChange={(e) => setProfileData({ ...profileData, password: e.target.value })}
+                       className="w-full bg-slate-50 border border-slate-100 p-3.5 md:p-4 rounded-xl font-bold text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                     />
+                     <p className="text-[10px] font-bold text-slate-400 mt-2 px-1">You will be required to sign in again if you change your password.</p>
+                   </div>
+                   <div className="pt-6">
+                     <button
+                       disabled={updatingProfile}
+                       className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:-translate-y-1 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                     >
+                       <ShieldCheck size={16} />
+                       {updatingProfile ? 'Applying Changes...' : 'Save Profile Settings'}
+                     </button>
+                   </div>
+                </form>
+              </div>
+            </motion.div>
+          )}
+
         </div>
       </main>      {/* Registration Inspector Modal */}
       <AnimatePresence>

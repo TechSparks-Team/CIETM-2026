@@ -98,6 +98,8 @@ const loginUser = async (req, res) => {
             email: user.email,
             role: user.role,
             phone: user.phone,
+            department: user.department,
+            college: user.college,
             token: generateToken(user._id),
         });
     } else {
@@ -117,7 +119,41 @@ const getUserProfile = async (req, res) => {
             name: user.name,
             email: user.email,
             role: user.role,
-            phone: user.phone
+            phone: user.phone,
+            department: user.department,
+            college: user.college
+        });
+    } else {
+        res.status(404).json({ message: 'User not found' });
+    }
+};
+
+// @desc    Update user profile
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateUserProfile = async (req, res) => {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+        user.name = req.body.name || user.name;
+        user.department = req.body.department || user.department;
+        user.college = req.body.college || user.college;
+        
+        if (req.body.password) {
+            user.password = req.body.password;
+        }
+
+        const updatedUser = await user.save();
+
+        res.json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            role: updatedUser.role,
+            phone: updatedUser.phone,
+            department: updatedUser.department,
+            college: updatedUser.college,
+            token: generateToken(updatedUser._id),
         });
     } else {
         res.status(404).json({ message: 'User not found' });
@@ -388,8 +424,18 @@ const updateUserRole = async (req, res) => {
                 user.assignedTracks = ['CIDT'];
             }
             
+            const wasReviewer = user.role === 'reviewer';
+            const isReviewer = newRole === 'reviewer';
+            
             user.role = newRole;
             await user.save();
+
+            // Try to assign papers if they just became a reviewer
+            if (isReviewer && !wasReviewer) {
+                const { performAutoAssignment } = require('./registrationController');
+                await performAutoAssignment();
+            }
+
             res.json({ message: 'User role updated successfully', user });
         } else {
             res.status(404).json({ message: 'User not found' });
@@ -412,6 +458,10 @@ const updateReviewerTracks = async (req, res) => {
 
         user.assignedTracks = req.body.tracks || [];
         await user.save();
+
+        // Dynamically auto-assign papers based on their new expertise profile
+        const { performAutoAssignment } = require('./registrationController');
+        await performAutoAssignment();
 
         res.json({ message: 'Reviewer tracks updated successfully', user });
     } catch (error) {
@@ -444,6 +494,12 @@ const adminCreateUser = async (req, res) => {
         // If they were pending, remove them from pending
         await PendingUser.deleteOne({ email });
 
+        // Auto assign papers if they were created as a reviewer
+        if (user.role === 'reviewer') {
+            const { performAutoAssignment } = require('./registrationController');
+            await performAutoAssignment();
+        }
+
         res.status(201).json({
             message: 'User created successfully',
             user: {
@@ -473,5 +529,6 @@ module.exports = {
     updatePassword,
     adminCreateUser,
     updateUserRole,
-    updateReviewerTracks
+    updateReviewerTracks,
+    updateUserProfile
 };

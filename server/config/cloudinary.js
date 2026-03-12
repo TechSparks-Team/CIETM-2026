@@ -15,33 +15,24 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => {
         const extension = file.originalname.split('.').pop();
-
-        let fileName = `anonymous_${Date.now()}`;
-
+        let finalPublicId = `paper_${Date.now()}`;
+        
         if (req.user && req.user._id) {
             try {
-                // Dynamically require to avoid circular dependency issues if any
                 const Registration = require('../models/Registration');
                 const registration = await Registration.findOne({ userId: req.user._id });
-
                 if (registration && registration.authorId) {
-                    fileName = registration.authorId; // e.g., CIETM-123456
-                } else {
-                    // Fallback to user ID if registration draft doesn't exist yet
-                    fileName = req.user._id.toString();
+                    finalPublicId = `paper_${registration.authorId}`;
                 }
-            } catch (err) {
-                console.error("Error fetching Registration for Cloudinary upload:", err);
-                fileName = req.user._id.toString();
-            }
+            } catch (err) {}
         }
 
         return {
             folder: 'conference_papers',
-            resource_type: 'raw', // Use 'raw' for non-image files like Word docs
-            public_id: `${fileName}.${extension}`,
+            resource_type: 'raw',
+            public_id: `${finalPublicId}.${extension}`,
         };
-    },
+    }
 });
 
 const upload = multer({

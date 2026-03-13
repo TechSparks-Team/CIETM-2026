@@ -10,11 +10,15 @@ const User = require('../models/User');
 // @route   POST /api/registrations/draft
 // @access  Private
 const saveDraft = async (req, res) => {
-    const { personalDetails, teamMembers, paperDetails } = req.body;
+    const { id, personalDetails, teamMembers, paperDetails } = req.body;
     const userId = req.user._id;
 
     try {
-        let registration = await Registration.findOne({ userId });
+        let registration;
+        
+        if (id) {
+            registration = await Registration.findOne({ _id: id, userId });
+        }
 
         // Ensure mobile is synced from User if not provided in personalDetails
         if (personalDetails && !personalDetails.mobile && req.user.phone) {
@@ -51,14 +55,14 @@ const saveDraft = async (req, res) => {
             // Filter team members
             const validTeamMembers = teamMembers ? teamMembers.filter(m => m.name && m.name.trim() !== '') : [];
 
-            // Generate a unique author ID (e.g., CIETM-123456)
+            // Generate a unique paper ID (e.g., PAPER-123456)
             const randomCode = Math.floor(100000 + Math.random() * 900000);
-            const authorId = `CIETM-${randomCode}`;
+            const paperId = `PAPER-${randomCode}`;
 
             // Create new draft
             registration = await Registration.create({
                 userId,
-                authorId,
+                paperId,
                 personalDetails,
                 teamMembers: validTeamMembers,
                 paperDetails,
@@ -68,6 +72,7 @@ const saveDraft = async (req, res) => {
 
         res.status(200).json(registration);
     } catch (error) {
+        console.error("Save Draft Error:", error.message, error.stack);
         res.status(400).json({ message: error.message });
     }
 };
@@ -76,8 +81,9 @@ const saveDraft = async (req, res) => {
 // @route   POST /api/registrations/submit
 // @access  Private
 const submitRegistration = async (req, res) => {
+    const { id } = req.body;
     try {
-        const registration = await Registration.findOne({ userId: req.user._id });
+        const registration = await Registration.findOne({ _id: id, userId: req.user._id });
 
         if (!registration) {
             return res.status(404).json({ message: 'Registration not found' });
@@ -103,6 +109,7 @@ const submitRegistration = async (req, res) => {
 
         res.status(200).json(registration);
     } catch (error) {
+        console.error("Submit Registration Error:", error.message, error.stack);
         res.status(400).json({ message: error.message });
     }
 };
@@ -112,10 +119,12 @@ const submitRegistration = async (req, res) => {
 // @access  Private
 const getMyRegistration = async (req, res) => {
     try {
-        const registration = await Registration.findOne({ userId: req.user._id })
-            .populate('paperDetails.assignedReviewer', 'name email role')
-            .populate('paperDetails.assignedChair', 'name email role');
-        res.json(registration);
+        const registrations = await Registration.find({ userId: req.user._id })
+            .populate('userId', 'name email phone role delegateId')
+            .populate('paperDetails.assignedReviewer', 'name email role delegateId')
+            .populate('paperDetails.assignedChair', 'name email role delegateId')
+            .sort({ createdAt: -1 });
+        res.json(registrations);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -139,9 +148,9 @@ const getAllRegistrations = async (req, res) => {
         }
 
         let registrations = await Registration.find(query)
-            .populate('userId', 'name email phone role')
-            .populate('paperDetails.assignedReviewer', 'name email role')
-            .populate('paperDetails.assignedChair', 'name email role');
+            .populate('userId', 'name email phone role delegateId')
+            .populate('paperDetails.assignedReviewer', 'name email role delegateId')
+            .populate('paperDetails.assignedChair', 'name email role delegateId');
 
         // Author Privacy for Reviewers
         if (req.user.role === 'reviewer') {
@@ -149,7 +158,7 @@ const getAllRegistrations = async (req, res) => {
                 const regObj = reg.toObject();
                 // Mask personal details
                 regObj.personalDetails = {
-                    authorId: reg.authorId || `PN-${reg._id.toString().slice(-6).toUpperCase()}`
+                    paperId: reg.paperId || `PN-${reg._id.toString().slice(-6).toUpperCase()}`
                 };
                 regObj.userId = {
                     role: reg.userId?.role
@@ -253,11 +262,15 @@ const downloadPaper = async (req, res) => {
             return res.status(404).json({ message: 'Paper not found or unauthorized' });
         }
 
-        // Construct dynamic filename - Privacy for reviewers
-        const paperID = registration.authorId || `REF-${registration._id.toString().slice(-6).toUpperCase()}`;
-        const fileNamePart = req.user.role === 'reviewer' ? `PAPER_${paperID}` : sanitizeFilename(registration.personalDetails.name || 'author');
-        const paperTitle = sanitizeFilename(registration.paperDetails.title || '');
-        const basename = req.user.role === 'reviewer' ? `PAPER_${paperID}` : (paperTitle ? `${fileNamePart}_${paperTitle}` : fileNamePart);
+        // Auto-update status from Submitted to Under Review when downloaded
+        if (registration.status === 'Submitted') {
+            registration.status = 'Under Review';
+            await registration.save();
+        }
+
+        // Construct dynamic filename - Use Paper ID for everyone as requested
+        const paperID = registration.authorId || `CIETM-${registration._id.toString().slice(-6).toUpperCase()}`;
+        const basename = paperID;
 
         // Get extension from originalName or default to docx
         const originalName = registration.paperDetails.originalName || '';
@@ -276,13 +289,27 @@ const downloadPaper = async (req, res) => {
             format,
             {
                 resource_type: resourceType,
-                type: 'upload',
-                attachment: `${basename}.${extension}`
+                type: 'upload'
             }
         );
 
-        // Redirect to the generated Cloudinary download URL
-        res.redirect(downloadUrl);
+        // Best practice: Path the stream to the response to strictly control the download filename
+        // This avoids issues where browsers ignore the redirect's content-disposition
+        try {
+            const response = await axios({
+                url: downloadUrl,
+                method: 'GET',
+                responseType: 'stream'
+            });
+
+            res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+            res.setHeader('Content-Disposition', `attachment; filename="${basename}.${extension}"`);
+            
+            response.data.pipe(res);
+        } catch (downloadError) {
+            console.error("Download Stream Error:", downloadError);
+            res.status(500).json({ message: "Failed to stream file for download" });
+        }
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
@@ -292,23 +319,16 @@ const downloadPaper = async (req, res) => {
 // @route   POST /api/registrations/upload-paper
 // @access  Private
 const updatePaper = async (req, res) => {
-    const { fileUrl, publicId, resourceType, originalName } = req.body;
+    const { id, fileUrl, publicId, resourceType, originalName } = req.body;
     try {
-        const registration = await Registration.findOne({ userId: req.user._id });
+        const registration = await Registration.findOne({ _id: id, userId: req.user._id });
         if (!registration) {
             return res.status(404).json({ message: 'Registration not found' });
         }
 
-        // Prevent updates if already reviewed (Accepted)
-        if (registration.status === 'Accepted') {
+        // Prevent updates if already reviewed (Accepted or Rejected)
+        if (['Accepted', 'Rejected'].includes(registration.status)) {
             return res.status(403).json({ message: `Cannot update paper as it has already been ${registration.status.toLowerCase()}.` });
-        }
-
-        const wasRejected = registration.status === 'Rejected';
-
-        // Enforce re-upload request workflow if rejected
-        if (wasRejected && registration.paperDetails.reuploadRequestStatus !== 'Approved') {
-            return res.status(403).json({ message: 'You must request and receive approval to re-upload a rejected manuscript.' });
         }
 
         // If there's an existing file, and the new file has a different public ID (e.g., different extension), delete the old one
@@ -327,31 +347,15 @@ const updatePaper = async (req, res) => {
         registration.paperDetails.resourceType = resourceType;
         registration.paperDetails.originalName = originalName;
 
-        if (registration.paperDetails.reuploadRequestStatus === 'Approved') {
-            registration.paperDetails.reuploadRequestStatus = 'None';
+        // If the registration was in Draft state, and the user has now uploaded a paper, move it to Submitted
+        if (registration.status === 'Draft') {
+            registration.status = 'Submitted';
+            registration.paperDetails.reviewStatus = 'Submitted';
+            registration.submittedAt = Date.now();
         }
 
         registration.updatedAt = Date.now();
-
-        if (wasRejected) {
-            registration.status = 'Submitted';
-            registration.paperDetails.reviewStatus = 'Submitted';
-        }
-
         await registration.save();
-
-        if (wasRejected) {
-            const admins = await User.find({ role: 'admin' });
-            for (const admin of admins) {
-                await createNotification(
-                    admin._id,
-                    'Revised Manuscript Upload',
-                    `Author ${req.user.name} has uploaded a revised manuscript for "${registration.paperDetails.title}".`,
-                    'info',
-                    '/admin'
-                );
-            }
-        }
 
         // Instantly trigger auto-assignment since the paper is now uploaded and ready for review
         await performAutoAssignment();
@@ -401,85 +405,14 @@ const getAdminAnalytics = async (req, res) => {
 // @route   POST /api/registrations/:id/request-reupload
 // @access  Private
 const requestReupload = async (req, res) => {
-    try {
-        const registration = await Registration.findById(req.params.id).populate('userId', 'name email');
-        
-        if (!registration || registration.userId._id.toString() !== req.user._id.toString()) {
-            return res.status(404).json({ message: 'Registration not found' });
-        }
-
-        if (registration.status !== 'Rejected') {
-            return res.status(400).json({ message: 'Only rejected papers can request re-upload.' });
-        }
-
-        registration.paperDetails.reuploadRequestStatus = 'Pending';
-        registration.updatedAt = Date.now();
-        await registration.save();
-
-        const admins = await User.find({ role: 'admin' });
-        for (const admin of admins) {
-            await createNotification(
-                admin._id,
-                'Re-upload Request',
-                `Author ${req.user.name} has requested to re-upload their rejected manuscript.`,
-                'info',
-                '/admin'
-            );
-        }
-
-        res.json(registration);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
+    res.status(403).json({ message: 'Re-submission is no longer supported for rejected papers.' });
 };
 
 // @desc    Handle paper re-upload request (Admin)
 // @route   POST /api/registrations/:id/handle-reupload-request
 // @access  Admin
 const handleReuploadRequest = async (req, res) => {
-    const { action } = req.body; // 'Approve' or 'Reject'
-
-    try {
-        const registration = await Registration.findById(req.params.id).populate('userId', 'email name');
-        
-        if (!registration) {
-            return res.status(404).json({ message: 'Registration not found' });
-        }
-
-        if (registration.paperDetails.reuploadRequestStatus !== 'Pending') {
-             return res.status(400).json({ message: 'No pending re-upload request.' });
-        }
-
-        registration.paperDetails.reuploadRequestStatus = action === 'Approve' ? 'Approved' : 'Rejected';
-        registration.updatedAt = Date.now();
-        await registration.save();
-
-        await createNotification(
-            registration.userId._id,
-            `Re-upload Request ${action}d`,
-            `Your request to re-upload the manuscript has been ${action.toLowerCase()} by an admin.`,
-            action === 'Approve' ? 'success' : 'error',
-            '/dashboard'
-        );
-
-         try {
-            await sendEmail({
-                email: registration.userId.email,
-                subject: `Re-upload Request ${action}d`,
-                message: `
-          <h1>Hello ${registration.userId.name},</h1>
-          <p>Your request to re-upload your rejected manuscript titled "<strong>${registration.paperDetails.title}</strong>" has been <strong>${action.toLowerCase()}</strong>.</p>
-          ${action === 'Approve' ? '<p>You may now log in to your dashboard to upload the revised manuscript.</p>' : ''}
-        `
-            });
-        } catch (err) {
-            console.error("Email failed to send", err);
-        }
-
-        res.json(registration);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
+    res.status(403).json({ message: 'Re-submission functionality has been disabled.' });
 };
 
 const updateRegistrationStatus = async (req, res) => {
@@ -569,11 +502,53 @@ const downloadAllPapersZip = async (req, res) => {
 // @access  Admin
 const verifyEntry = async (req, res) => {
     try {
-        const registration = await Registration.findById(req.params.id).populate('userId', 'name email phone');
+        const identifier = req.params.id;
+        let registration;
+
+        if (identifier.startsWith('CIETM-')) {
+            // Search by Delegate ID (User)
+            const user = await User.findOne({ delegateId: identifier });
+            if (!user) {
+                return res.status(404).json({ message: 'User not found with this Delegate ID' });
+            }
+            
+            // Find most relevant registration for entry
+            // Priority: Accepted > Submitted > Under Review > Draft
+            const priorityOrder = ['Accepted', 'Submitted', 'Under Review', 'Draft'];
+            for (const status of priorityOrder) {
+                registration = await Registration.findOne({ userId: user._id, status })
+                    .populate('userId', 'name email phone delegateId');
+                if (registration) break;
+            }
+
+            // Fallback if no specific status match found but user exists
+            if (!registration) {
+                registration = await Registration.findOne({ userId: user._id })
+                    .populate('userId', 'name email phone delegateId');
+            }
+        } else if (identifier.startsWith('PAPER-')) {
+            // Search by Paper ID
+            registration = await Registration.findOne({ paperId: identifier })
+                .populate('userId', 'name email phone delegateId');
+        } else {
+            // Fallback to MongoDB _id
+            try {
+                registration = await Registration.findById(identifier)
+                    .populate('userId', 'name email phone delegateId');
+            } catch (err) {
+                return res.status(400).json({ message: 'Invalid ID format' });
+            }
+        }
 
         if (!registration) {
-            return res.status(404).json({ message: 'Invalid ID Card or Registration not found' });
+            return res.status(404).json({ message: 'Registration record not found' });
         }
+
+        // Fetch all papers for this user to show in admin dashboard
+        const otherPapers = await Registration.find({ 
+            userId: registration.userId._id || registration.userId,
+            _id: { $ne: registration._id } 
+        }).select('paperId paperDetails.title status paymentStatus');
 
         if (registration.status !== 'Accepted') {
             return res.status(400).json({
@@ -582,7 +557,8 @@ const verifyEntry = async (req, res) => {
                     : `Manuscript status is ${registration.status}. It must be "Accepted" before verification.`,
                 status: registration.status,
                 personalDetails: registration.personalDetails,
-                paperDetails: registration.paperDetails // Sending this so frontend can show file existence
+                paperDetails: registration.paperDetails,
+                otherPapers: otherPapers // Still send other papers even on error
             });
         }
 
@@ -591,9 +567,13 @@ const verifyEntry = async (req, res) => {
         registration.attendedAt = Date.now();
         await registration.save();
 
-        res.json(registration);
+        const result = registration.toObject();
+        result.otherPapers = otherPapers;
+
+        res.json(result);
     } catch (error) {
-        res.status(400).json({ message: 'Invalid QR Code data' });
+        console.error('Verify Entry Error:', error);
+        res.status(500).json({ message: 'Internal Server Error during verification' });
     }
 };
 
@@ -655,7 +635,7 @@ const assignReviewer = async (req, res) => {
                 'New Paper Assigned',
                 `A new paper titled "${registration.paperDetails.title}" has been assigned to you for review.`,
                 'info',
-                '/reviewer/dashboard'
+                `/reviewer/dashboard?paperId=${registration._id}`
             );
         }
 
@@ -738,7 +718,7 @@ async function performAutoAssignment(allowFallback = false) {
                 'Auto Paper Assignment',
                 `A new paper titled "${reg.paperDetails.title}" has been auto-assigned to you based on your track expertise.`,
                 'info',
-                '/reviewer/dashboard'
+                `/reviewer/dashboard?paperId=${reg._id}`
             );
             
             results.push({ paper: reg.paperDetails.title, reviewer: selectedReviewer.name });

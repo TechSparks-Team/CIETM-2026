@@ -23,7 +23,7 @@ const { upload, uploadProfilePic } = require('../config/cloudinary');
 
 router.get('/download/:id', protect, downloadPaper);
 router.get('/download-all', protect, admin, downloadAllPapersZip);
-router.get('/verify/:id', protect, admin, verifyEntry);
+router.get('/verify/:id', protect, authorize('admin', 'chair'), verifyEntry);
 router.post('/draft', protect, saveDraft);
 router.post('/submit', protect, submitRegistration);
 router.get('/my', protect, getMyRegistration);

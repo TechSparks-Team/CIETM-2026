@@ -100,6 +100,7 @@ const loginUser = async (req, res) => {
             phone: user.phone,
             department: user.department,
             college: user.college,
+            delegateId: user.delegateId,
             token: generateToken(user._id),
         });
     } else {
@@ -121,7 +122,8 @@ const getUserProfile = async (req, res) => {
             role: user.role,
             phone: user.phone,
             department: user.department,
-            college: user.college
+            college: user.college,
+            delegateId: user.delegateId
         });
     } else {
         res.status(404).json({ message: 'User not found' });
@@ -153,6 +155,7 @@ const updateUserProfile = async (req, res) => {
             phone: updatedUser.phone,
             department: updatedUser.department,
             college: updatedUser.college,
+            delegateId: updatedUser.delegateId,
             token: generateToken(updatedUser._id),
         });
     } else {
@@ -183,6 +186,8 @@ const verifyEmail = async (req, res) => {
             return res.status(400).json({ message: 'Invalid verification code' });
         }
 
+        const delegateId = `CIETM-${Math.floor(100000 + Math.random() * 900000)}`;
+
         // Create actual User from PendingUser data
         // We use insertOne to bypass Mongoose hooks because the password IS ALREADY HASHED in pendingUser
         await User.collection.insertOne({
@@ -192,6 +197,7 @@ const verifyEmail = async (req, res) => {
             phone: pendingUser.phone,
             role: pendingUser.role,
             isEmailVerified: true,
+            delegateId,
             createdAt: new Date(),
             updatedAt: new Date(),
             __v: 0
@@ -208,6 +214,7 @@ const verifyEmail = async (req, res) => {
             email: createdUser.email,
             role: createdUser.role,
             phone: createdUser.phone,
+            delegateId: createdUser.delegateId,
             isEmailVerified: createdUser.isEmailVerified,
             token: generateToken(createdUser._id),
             message: 'Email verified successfully'
@@ -488,6 +495,7 @@ const adminCreateUser = async (req, res) => {
             phone,
             role: role || 'author',
             isEmailVerified: true,
+            delegateId: `CIETM-${Math.floor(100000 + Math.random() * 900000)}`,
             assignedTracks: (role === 'reviewer') ? ['CIDT'] : []
         });
 
@@ -508,6 +516,7 @@ const adminCreateUser = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 phone: user.phone,
+                delegateId: user.delegateId,
                 isEmailVerified: user.isEmailVerified
             }
         });

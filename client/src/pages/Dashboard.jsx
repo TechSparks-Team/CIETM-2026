@@ -6,7 +6,7 @@ import {
   FileText, CheckCircle, Clock, AlertCircle,
   Settings, Bell, Download, Menu, X, Search, ChevronRight, LogOut, Lock,
   LayoutDashboard, Calendar, MapPin, ShieldCheck, Award, Layers,
-  Upload, Home, Edit2, Camera, User, CreditCard, TrendingUp
+  Upload, Home, Edit2, Camera, User, CreditCard, TrendingUp, MessageSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SubmissionFormSingle from '../components/SubmissionFormSingle';
@@ -18,7 +18,9 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [registration, setRegistration] = useState(null);
+  const [registrations, setRegistrations] = useState([]);
+  const [activeRegistrationId, setActiveRegistrationId] = useState(null);
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadingProfilePic, setUploadingProfilePic] = useState(false);
@@ -55,9 +57,16 @@ const Dashboard = () => {
           Authorization: `Bearer ${user?.token}`
         }
       });
-      setRegistration(data);
+      setRegistrations(data || []);
+      
+      // If we have an active ID, find that registration, otherwise default to first if exists
+      if (activeRegistrationId) {
+        // stay on current
+      } else if (data && data.length > 0) {
+        setActiveRegistrationId(data[0]._id);
+      }
     } catch (error) {
-      console.error("Failed to fetch registration", error);
+      console.error("Failed to fetch registrations", error);
     } finally {
       setLoading(false);
       setLastSync(new Date());
@@ -130,10 +139,11 @@ const Dashboard = () => {
   }, [fetchRegistration, fetchNotifications, fetchSettings, location.search]);
 
   useEffect(() => {
-    if (registration && ['Accepted', 'Rejected'].includes(registration.status) && activeTab === 'drafts') {
+    const activeReg = registrations.find(r => r._id === activeRegistrationId);
+    if (activeReg && ['Accepted', 'Rejected'].includes(activeReg.status) && activeTab === 'drafts') {
       setActiveTab('paper');
     }
-  }, [registration, activeTab]);
+  }, [registrations, activeRegistrationId, activeTab]);
 
   const handleForceSync = async () => {
     const loadingToast = toast.loading("Synchronizing dashboard...");
@@ -149,32 +159,27 @@ const Dashboard = () => {
     }
   };
 
-  const handleDownload = () => {
-    if (!registration) return;
+  const handleDownload = (regId) => {
+    const targetId = regId || activeRegistrationId;
+    if (!targetId) return;
     // Open the download route with token in query for authentication
-    window.open(`/api/registrations/download/${registration._id}?token=${user.token}`, '_blank');
-  };
-
-  const handleRequestReupload = async () => {
-    if (!registration) return;
-    const confirmRequest = window.confirm("Are you sure you want to request a re-upload for this rejected manuscript? This will notify the admin.");
-    if (!confirmRequest) return;
-
-    try {
-      await axios.post(`/api/registrations/${registration._id}/request-reupload`, {}, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      toast.success("Re-upload request sent successfully! An admin will review it soon.");
-      fetchRegistration();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to request re-upload.");
-      console.error("Request re-upload error", error);
+    window.open(`/api/registrations/download/${targetId}?token=${user.token}`, '_blank');
+    
+    // Auto-refresh if the paper was just submitted
+    const reg = registrations.find(r => r._id === targetId);
+    if (reg?.status === 'Submitted') {
+      setTimeout(fetchRegistration, 2000);
     }
   };
 
-  const handleFullPaperUpload = async (e) => {
+
+
+  const handleFullPaperUpload = async (e, regId) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    const targetId = regId || activeRegistrationId;
+    if (!targetId) return;
 
     const allowedTypes = [
       'application/msword',
@@ -202,6 +207,7 @@ const Dashboard = () => {
 
       // Then update the registration record with file details
       await axios.post('/api/registrations/update-paper', {
+        id: targetId,
         fileUrl: uploadRes.url,
         publicId: uploadRes.publicId,
         resourceType: uploadRes.resourceType,
@@ -270,12 +276,14 @@ const Dashboard = () => {
     }
   };
 
-  const handlePayment = async () => {
-    if (!registration) return;
-    setPaymentLoading(true);
+  const handlePayment = async (regId) => {
+    const targetId = regId || registration?._id;
+    if (!targetId) return;
+
+    setPaymentLoading(targetId); // Store ID to show loading on specific button
     try {
       const { data } = await axios.post('/api/payments/init', {
-        registrationId: registration._id
+        registrationId: targetId
       }, {
         headers: { Authorization: `Bearer ${user?.token}` }
       });
@@ -317,18 +325,20 @@ const Dashboard = () => {
     'INDUSTRY PERSONNEL': 900
   };
 
-  const calculateCurrentFee = () => {
-    if (!registration) return 0;
-    let total = categoryAmounts[registration.personalDetails?.category] || 1000;
-    if (registration.teamMembers && registration.teamMembers.length > 0) {
-      registration.teamMembers.forEach(member => {
+  const registration = registrations.find(r => r._id === activeRegistrationId) || registrations[0];
+
+  const calculateCurrentFee = (reg) => {
+    if (!reg) return 0;
+    let total = categoryAmounts[reg.personalDetails?.category] || 1000;
+    if (reg.teamMembers && reg.teamMembers.length > 0) {
+      reg.teamMembers.forEach(member => {
         total += categoryAmounts[member.category] || 1000;
       });
     }
     return total;
   };
 
-  const currentFee = calculateCurrentFee();
+  const currentFee = calculateCurrentFee(registration);
   const unreadNotifications = notifications.filter(n => !n.isRead).length;
 
   const renderBreadcrumbs = () => {
@@ -371,23 +381,16 @@ const Dashboard = () => {
   };
 
   const renderOverview = () => (
-    <motion.div variants={overviewContainerVariants} initial="hidden" animate="visible" className="space-y-6 relative">
-      {/* Decorative background blurs inside the overview area */}
-      <div className="absolute top-10 right-20 w-72 h-72 bg-indigo-400/10 rounded-full blur-3xl pointer-events-none animate-float"></div>
-      <div className="absolute bottom-20 left-10 w-64 h-64 bg-purple-400/10 rounded-full blur-3xl pointer-events-none animate-float" style={{ animationDelay: '2s' }}></div>
-
+    <motion.div variants={overviewContainerVariants} initial="hidden" animate="visible" className="space-y-6 relative pb-10">
       {/* Header */}
-      <motion.div variants={overviewItemVariants} className="flex items-center justify-between relative z-10">
+      <motion.div variants={overviewItemVariants} className="flex items-center justify-between relative z-10 mb-8 px-1">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight font-display">Overview</h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">Welcome back, <span className="text-indigo-600 font-bold">{user.name}</span>.</p>
+          <p className="text-sm font-bold text-slate-500">Welcome back, <span className="text-indigo-600">{user.name}</span>. Here is your conference summary.</p>
         </div>
         <div className="flex gap-2">
-          {!registration?.paperDetails?.fileUrl && registration?.status !== 'Accepted' && (
-            <button onClick={() => setActiveTab('paper')} className="btn btn-primary px-5 py-2.5 text-xs shadow-indigo-200 hover:-translate-y-0.5 group">
-              <Upload size={16} className="group-hover:animate-bounce-slow" /> Upload Paper
-            </button>
-          )}
+          <button onClick={() => { setIsAddingNew(true); setActiveTab('paper'); }} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200">
+            <Layers size={16} /> New Presentation
+          </button>
         </div>
       </motion.div>
 
@@ -396,116 +399,106 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Minimal Status Card */}
-          <motion.div variants={overviewItemVariants} className={`rounded-[2.5rem] p-6 md:p-8 relative overflow-hidden bg-white/60 backdrop-blur-2xl border border-white/60 shadow-glass transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200/50 group`}>
-            <div className="absolute right-10 bottom-10 opacity-[0.03] rotate-12 group-hover:rotate-[24deg] transition-all duration-700 scale-[2.5] transform text-slate-800 pointer-events-none">
-              {registration?.status === 'Accepted' ? <Award size={140} /> : <Layers size={140} />}
-            </div>
-
-            <div className="relative z-10 flex flex-col h-full justify-between gap-8">
+          <motion.div variants={overviewItemVariants} className="bg-white rounded-[2rem] p-8 md:p-10 border border-slate-100 shadow-sm relative overflow-hidden group">
+            <div className="relative z-10 flex flex-col h-full justify-between gap-10">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] mb-4 shadow-sm border ${registration?.status === 'Accepted' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest mb-4 border ${
+                    registration?.status === 'Accepted' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                     registration?.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' :
-                      (registration?.status === 'Submitted' && !registration.paperDetails?.fileUrl) ? 'bg-slate-50 text-slate-600 border-slate-200' :
-                        'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}>
+                    'bg-slate-50 text-slate-500 border-slate-100'
+                  }`}>
                     {registration?.status === 'Accepted' ? <CheckCircle size={14} /> : <Clock size={14} />}
-                    {registration?.status === 'Submitted' && !registration?.paperDetails?.fileUrl ? 'Pending Upload' : (registration?.status || 'No Submission')}
-                  </span>
-                  <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-none ${registration?.status === 'Accepted' ? 'text-blue-600' :
-                    registration?.status === 'Rejected' ? 'text-red-500' :
-                      'text-slate-800'
-                    }`}>
-                    {registration?.status === 'Accepted' ? 'Paper Accepted!' :
-                      registration?.status === 'Under Review' ? 'Under Review' :
-                        (registration?.status === 'Submitted' && registration?.paperDetails?.fileUrl) ? 'Submission Received' :
-                          'Pending Submission'}
+                    {registration?.status === 'Submitted' && !registration?.paperDetails?.fileUrl ? 'Awaiting Upload' : (registration?.status || 'Not Submitted')}
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-tight">
+                    {registration?.status === 'Accepted' ? 'Manuscript Accepted' :
+                      registration?.status === 'Under Review' ? 'Under External Review' :
+                      (registration?.status === 'Submitted' && registration?.paperDetails?.fileUrl) ? 'Submission Received' :
+                      'Incomplete Submission'}
                   </h2>
                 </div>
-                <div className="flex flex-col items-end hidden sm:flex bg-slate-50/50 px-4 py-3 rounded-2xl border border-slate-100">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tracking ID</p>
-                  <p className="font-mono text-xl font-black text-slate-700 tracking-wider">#{registration?._id?.slice(-4).toUpperCase() || '----'}</p>
+                <div className="flex flex-col items-end gap-3 text-right">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Delegate ID</p>
+                    <p className="font-mono text-xl font-bold text-indigo-600">{registration?.userId?.delegateId || user.delegateId || '----'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Paper ID</p>
+                    <p className="font-mono text-lg font-bold text-slate-700">{registration?.paperId || '----'}</p>
+                  </div>
                 </div>
               </div>
 
               {registration?.paperDetails?.reviewerComments && (
-                <div className={`mt-2 mb-2 p-4 rounded-2xl border ${registration.status === 'Accepted' ? 'bg-blue-50/50 border-blue-100' : registration.status === 'Rejected' ? 'bg-red-50/50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
-                  <h3 className={`text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-2 ${registration.status === 'Accepted' ? 'text-blue-500' : registration.status === 'Rejected' ? 'text-red-500' : 'text-slate-400'}`}>
-                    <FileText size={12} /> Admin Remarks
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-2">
+                    <MessageSquare size={12} /> Institutional Feedback
                   </h3>
-                  <p className={`text-sm font-medium ${registration.status === 'Accepted' ? 'text-blue-800' : registration.status === 'Rejected' ? 'text-red-800' : 'text-slate-700'}`}>
+                  <p className="text-sm font-medium text-slate-600 leading-relaxed">
                     {registration.paperDetails.reviewerComments}
                   </p>
                 </div>
               )}
 
-              <div>
-                {/* Visual Progress Bar */}
-                <div className="bg-slate-100 rounded-full h-2 w-full mb-4 overflow-hidden border border-slate-200 relative">
-                  <div
-                    className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ease-out ${registration?.status === 'Accepted' ? 'bg-blue-500' :
-                      registration?.status === 'Rejected' ? 'bg-red-500' :
-                        'bg-slate-800'
-                      }`}
-                    style={{
-                      width: `${registration?.status === 'Accepted' || registration?.status === 'Rejected' ? '100%' :
+              <div className="space-y-4">
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-1000 ${
+                      registration?.status === 'Accepted' ? 'bg-emerald-500' :
+                      registration?.status === 'Rejected' ? 'bg-red-500' : 'bg-slate-800'
+                    }`}
+                    style={{ 
+                      width: `${registration?.status === 'Accepted' || registration?.status === 'Rejected' ? '100%' : 
                         registration?.paymentStatus === 'Completed' ? '100%' :
-                          ['Under Review', 'Accepted', 'Rejected'].includes(registration?.paperDetails?.reviewStatus) ? '75%' :
-                            registration?.paperDetails?.fileUrl ? '50%' :
-                              registration?.paperDetails?.abstract ? '25%' : '5%'
-                        }`
+                        registration?.paperDetails?.fileUrl ? '50%' : '15%'}` 
                     }}
-                  >
-                  </div>
+                  />
                 </div>
-
                 <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
-                  <span className={registration?.paperDetails?.abstract ? 'text-slate-800' : ''}>Draft</span>
-                  <span className={registration?.paperDetails?.fileUrl ? 'text-slate-800' : ''}>Upload</span>
-                  <span className={['Under Review', 'Accepted', 'Rejected'].includes(registration?.paperDetails?.reviewStatus) ? 'text-slate-800' : ''}>Review</span>
-                  <span className={['Accepted', 'Rejected'].includes(registration?.status) ? (registration?.status === 'Accepted' ? 'text-blue-600' : 'text-red-500') : ''}>Decision</span>
+                  <span className={registration?.paperDetails?.abstract ? 'text-slate-800' : ''}>Registration</span>
+                  <span className={registration?.paperDetails?.fileUrl ? 'text-slate-800' : ''}>Manuscript</span>
+                  <span className={['Under Review', 'Accepted', 'Rejected'].includes(registration?.paperDetails?.reviewStatus) ? 'text-slate-800' : ''}>Evaluation</span>
+                  <span className={['Accepted', 'Rejected'].includes(registration?.status) ? 'text-slate-800' : ''}>Result</span>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Quick Stats Row */}
-          <motion.div variants={overviewItemVariants} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5">
-            <motion.div whileHover={{ y: -5, scale: 1.02 }} className="bg-white/60 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/60 shadow-glass flex items-center sm:flex-col sm:items-start sm:justify-between gap-4 sm:gap-0 group hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500 overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-400/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-indigo-400/20 transition-colors"></div>
-              <div className="w-12 h-12 shrink-0 sm:mb-4 bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-6 transition-transform shadow-inner relative z-10">
-                <Layers size={22} className="group-hover:animate-bounce-slow" />
+          <motion.div variants={overviewItemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Layers size={16} />
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Track</span>
               </div>
-              <div className="relative z-10">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Assigned Track</span>
-                <p className="text-sm font-black text-slate-800 truncate" title={registration?.paperDetails?.track}>{registration?.paperDetails?.track?.split(' ')[0] || 'Unassigned'}</p>
-              </div>
-            </motion.div>
+              <p className="text-sm font-bold text-slate-800 truncate" title={registration?.paperDetails?.track}>
+                {registration?.paperDetails?.track || 'General Domain'}
+              </p>
+            </div>
 
-            <motion.div whileHover={{ y: -5, scale: 1.02 }} className="bg-white/60 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/60 shadow-glass flex items-center sm:flex-col sm:items-start sm:justify-between gap-4 sm:gap-0 group hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-400/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-blue-400/20 transition-colors"></div>
-              <div className={`w-12 h-12 shrink-0 sm:mb-4 bg-gradient-to-br rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:-rotate-6 transition-transform shadow-inner relative z-10 ${registration?.paymentStatus === 'Completed' ? 'from-blue-50 to-cyan-50 text-blue-600' : 'from-amber-50 to-orange-50 text-amber-600'
-                }`}>
-                <CreditCard size={22} className="group-hover:animate-bounce-slow" />
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CreditCard size={16} />
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Finance</span>
               </div>
-              <div className="relative z-10">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Fee Status</span>
-                <p className={`text-sm font-black ${registration?.paymentStatus === 'Completed' ? 'text-blue-700' : 'text-slate-800'}`}>
-                  {registration?.paymentStatus || 'Pending Payment'}
-                </p>
-              </div>
-            </motion.div>
+              <p className="text-sm font-bold text-slate-800 uppercase tracking-tight">
+                {registration?.paymentStatus === 'Completed' ? 'Verified' : 'Unpaid'}
+              </p>
+            </div>
 
-            <motion.div whileHover={{ y: -5, scale: 1.02 }} className="bg-white/60 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/60 shadow-glass flex items-center sm:flex-col sm:items-start sm:justify-between gap-4 sm:gap-0 group hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-500 sm:col-span-2 md:col-span-1 overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-400/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-purple-400/20 transition-colors"></div>
-              <div className="w-12 h-12 shrink-0 sm:mb-4 bg-gradient-to-br from-purple-50 to-fuchsia-50 text-purple-600 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-12 transition-transform shadow-inner relative z-10">
-                <Calendar size={22} className="group-hover:animate-bounce-slow" />
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-600 flex items-center justify-center">
+                  <Calendar size={16} />
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Event Date</span>
               </div>
-              <div className="relative z-10">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block mb-1">Upcoming Deadline</span>
-                <p className="text-sm font-bold text-slate-800">16 Mar 2026</p>
-              </div>
-            </motion.div>
+              <p className="text-sm font-bold text-slate-800">29th April 2026</p>
+            </div>
           </motion.div>
 
           {/* Deadlines List */}
@@ -594,124 +587,97 @@ const Dashboard = () => {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Next Action Card */}
-          <motion.div variants={overviewItemVariants} whileHover={{ y: -5 }} className="bg-white/60 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-6 md:p-8 shadow-glass relative overflow-hidden group transition-all duration-500">
-            <h3 className="text-[10px] font-black text-indigo-500 bg-indigo-50/50 py-1.5 px-3 rounded-xl uppercase tracking-[0.2em] mb-6 text-center relative z-10 border border-indigo-100/50 inline-block w-full">Action Required</h3>
 
-            {/* Background Pattern */}
-            <div className="absolute -right-10 -top-10 opacity-[0.03] rotate-12 transition-transform duration-700 group-hover:scale-125 group-hover:rotate-45 pointer-events-none text-indigo-900 drop-shadow-2xl">
-              {registration?.paymentStatus === 'Completed' ? <ShieldCheck size={180} /> :
-                registration?.status === 'Accepted' ? <CreditCard size={180} /> :
-                  registration?.paperDetails?.fileUrl ? <Clock size={180} /> :
-                    <Upload size={180} />}
-            </div>
 
-            <div className="flex flex-col items-center text-center space-y-5 relative z-10">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-1 shadow-inner group-hover:-translate-y-1 transition-transform ${registration?.paymentStatus === 'Completed' ? 'bg-gradient-to-br from-blue-100 to-cyan-50 text-blue-600' :
-                registration?.status === 'Accepted' ? 'bg-gradient-to-br from-indigo-100 to-blue-50 text-indigo-600 animate-bounce-slow' :
-                  registration?.paperDetails?.fileUrl ? 'bg-gradient-to-br from-slate-100 to-gray-50 text-slate-500' :
-                    'bg-gradient-to-br from-indigo-100 to-blue-50 text-indigo-600 animate-bounce-slow'
-                }`}>
+
+
+
+          <motion.div variants={overviewItemVariants} className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm group">
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-inner group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                 {registration?.paymentStatus === 'Completed' ? <ShieldCheck size={32} /> :
                   registration?.status === 'Accepted' ? <CreditCard size={32} /> :
-                    registration?.paperDetails?.fileUrl ? <Clock size={32} /> :
-                      <Upload size={32} />}
+                  registration?.paperDetails?.fileUrl ? <Clock size={32} /> :
+                  <Upload size={32} />}
               </div>
 
               <div>
-                <h4 className="font-extrabold text-slate-900 text-lg mb-1 drop-shadow-sm">
-                  {registration?.paymentStatus === 'Completed' ? 'You\'re All Set!' :
-                    registration?.status === 'Accepted' ? 'Complete Registration' :
-                      registration?.paperDetails?.fileUrl ? 'Awaiting Review' :
-                        'Upload Full Paper'}
+                <h4 className="font-extrabold text-slate-800 text-lg mb-1">
+                  {registration?.paymentStatus === 'Completed' ? 'Ready for CIETM' :
+                    registration?.status === 'Accepted' ? 'Registration Awaiting' :
+                    registration?.paperDetails?.fileUrl ? 'Review Ongoing' :
+                    'Action Required'}
                 </h4>
                 <p className="text-xs text-slate-500 font-medium px-4">
-                  {registration?.paymentStatus === 'Completed' ? 'Access your digital ID below.' :
-                    registration?.status === 'Accepted' ? 'Secure your spot by paying the fee.' :
-                      registration?.paperDetails?.fileUrl ? 'Your paper is currently under evaluation.' :
-                        'Please upload your document.'}
+                  {registration?.paymentStatus === 'Completed' ? 'Your attendance is confirmed.' :
+                    registration?.status === 'Accepted' ? 'Complete payment to secure spot.' :
+                    registration?.paperDetails?.fileUrl ? 'Evaluation in progress.' :
+                    'Please upload your manuscript.'}
                 </p>
               </div>
 
               {registration?.paymentStatus !== 'Completed' && (
                 <button
                   onClick={() => {
-                    if (registration?.status === 'Accepted') {
-                      setActiveTab('payment');
-                      const scrollTarget = document.querySelector('.overflow-y-auto') || window;
-                      scrollTarget.scrollTo({ top: 0, behavior: 'smooth' });
-                    } else {
-                      setActiveTab('paper');
-                      const scrollTarget = document.querySelector('.overflow-y-auto') || window;
-                      scrollTarget.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
+                    const tab = registration?.status === 'Accepted' ? 'payment' : 'paper';
+                    setActiveTab(tab);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-
-                  className="w-full btn btn-primary py-3 text-xs shadow-indigo-500/30 hover:shadow-indigo-500/50 mt-2 hover:-translate-y-0.5"
+                  className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
                 >
-                  {registration?.status === 'Accepted' ? 'Pay Now' :
-                    registration?.paperDetails?.fileUrl ? 'View Submission' : 'Upload Now'}
+                  {registration?.status === 'Accepted' ? 'Proceed to Payment' :
+                    registration?.paperDetails?.fileUrl ? 'Open Submission' : 'Start Upload'}
                 </button>
               )}
             </div>
           </motion.div>
 
           {/* ID Card / Verification */}
-          <motion.div variants={overviewItemVariants} className={`rounded-[2.5rem] p-6 md:p-8 border relative overflow-hidden transition-all duration-500 ${registration?.paymentStatus === 'Completed' ? 'bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white border-indigo-500/30 shadow-2xl shadow-indigo-900/50 hover:shadow-indigo-900/70' : 'bg-white/60 backdrop-blur-2xl border-white/60 text-slate-400 shadow-glass'} group hover:-translate-y-1`}>
-            {/* Background Icon */}
-            <div className={`absolute -right-6 -bottom-6 opacity-[0.05] rotate-12 transition-transform duration-700 group-hover:scale-125 ${registration?.paymentStatus === 'Completed' ? 'text-indigo-400' : 'text-slate-900'}`}>
-              {registration?.paymentStatus === 'Completed' ? <ShieldCheck size={140} /> : <ShieldCheck size={140} />}
+          <motion.div variants={overviewItemVariants} className={`rounded-[2rem] p-8 border transition-all duration-300 ${
+            registration?.paymentStatus === 'Completed' 
+            ? 'bg-slate-900 text-white border-slate-800 shadow-xl' 
+            : 'bg-white border-slate-100 text-slate-400 opacity-60'
+          } group`}>
+            <div className="flex items-center justify-between mb-8">
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Digital Identity</span>
+              <ShieldCheck size={20} className={registration?.paymentStatus === 'Completed' ? 'text-indigo-400' : 'text-slate-300'} />
             </div>
-
-            {registration?.paymentStatus === 'Completed' && (
-              <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl -mr-16 -mt-16 animate-pulse"></div>
-            )}
-
-            <div className="flex items-center justify-between mb-6 relative z-10">
-              <span className={`text-[10px] font-black uppercase tracking-[0.2em] text-blue-400`}>Digital Pass</span>
-              <div className={`p-2 rounded-lg bg-white/10`}>
-                <ShieldCheck size={18} className="text-blue-400" />
-              </div>
-            </div>
-            <div className="mb-8 relative z-10">
-              <p className="text-3xl font-black tracking-tight mb-1 drop-shadow-sm">
-                ADMIT ONE
-              </p>
-              <p className={`text-xs font-semibold text-slate-400`}>Authorize Entry</p>
+            <div className="mb-10">
+              <p className="text-3xl font-black tracking-tight mb-2">DELEGATE PASS</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Verified Admission</p>
             </div>
             <button
-              onClick={() => setShowIDCard(true)}
-              className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 relative z-10 bg-white text-slate-900 hover:bg-slate-100 shadow-lg hover:shadow-xl hover:-translate-y-0.5`}
+              onClick={() => registration && setShowIDCard(true)}
+              className={`w-full py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${
+                registration?.paymentStatus === 'Completed'
+                ? 'bg-white text-slate-900 hover:bg-slate-100 shadow-lg'
+                : 'bg-slate-50 text-slate-400 cursor-not-allowed border border-slate-100'
+              }`}
             >
-              View ID Card
+              Access ID Card
             </button>
           </motion.div>
 
           {/* Author Guidelines Card (Full Content) */}
-          <motion.div variants={overviewItemVariants} whileHover={{ y: -5 }} className="bg-white/60 backdrop-blur-2xl rounded-[2.5rem] border border-white/60 p-6 md:p-8 shadow-glass relative overflow-hidden group hover:border-indigo-100/60 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10">
-            <div className="absolute -top-10 -right-10 text-slate-900 opacity-[0.02] group-hover:opacity-[0.04] transition-all duration-700 rotate-12 group-hover:rotate-45 group-hover:scale-125 pointer-events-none drop-shadow-xl">
-              <FileText size={200} />
-            </div>
+          <motion.div variants={overviewItemVariants} className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm group">
 
-            <div className="flex items-center gap-4 mb-6 relative z-10">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-50 to-blue-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
                 <FileText size={20} />
               </div>
-              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em] leading-tight flex-1">Author<br />Guidelines</h3>
+              <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest leading-tight">Submission<br />Guidelines</h3>
             </div>
 
-            <div className="space-y-5 relative z-10">
+            <div className="space-y-6">
               <ul className="space-y-4">
-                <li className="flex gap-4 text-xs text-slate-600 font-medium leading-relaxed">
-                  <CheckCircle className="text-blue-500 shrink-0 mt-0.5 shadow-sm rounded-full bg-blue-50" size={16} />
-                  <span>Original work not published elsewhere and must follow IEEE formatting.</span>
+                <li className="flex gap-4 text-xs text-slate-500 font-medium leading-relaxed">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-200 mt-1.5 shrink-0"></div>
+                  <span>Original work must follow IEEE conference formatting standards.</span>
                 </li>
-                <li className="flex gap-4 text-xs text-slate-600 font-medium leading-relaxed">
-                  <CheckCircle className="text-blue-500 shrink-0 mt-0.5 shadow-sm rounded-full bg-blue-50" size={16} />
-                  <span>Max 6 pages allowed with strict double-blind peer review.</span>
-                </li>
-                <li className="flex gap-4 text-xs text-slate-600 font-medium leading-relaxed">
-                  <CheckCircle className="text-blue-500 shrink-0 mt-0.5 shadow-sm rounded-full bg-blue-50" size={16} />
-                  <span>Plagiarism must be under 15% for evaluation.</span>
+                <li className="flex gap-4 text-xs text-slate-500 font-medium leading-relaxed">
+                  <div className="w-1.5 h-1.5 rounded-full bg-slate-200 mt-1.5 shrink-0"></div>
+                  <span>Double-blind peer review with maximum plagiarism of 15%.</span>
                 </li>
               </ul>
 
@@ -719,9 +685,9 @@ const Dashboard = () => {
                 href="https://www.ieee.org/content/dam/ieee-org/ieee/web/org/conferences/Conference-template-A4.doc"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 bg-indigo-50/50 hover:bg-indigo-50 text-indigo-700 rounded-xl text-xs font-bold border border-indigo-100 hover:border-indigo-200 transition-all duration-300 hover:shadow-sm"
+                className="flex items-center justify-center gap-2 w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold border border-slate-200 transition-all"
               >
-                <Download size={16} /> Download Template
+                <Download size={16} /> Word Template
               </a>
             </div>
           </motion.div>
@@ -741,28 +707,26 @@ const Dashboard = () => {
   };
 
   const renderSubmissionTab = () => {
-    const isMissingDetails = registration && (!registration.personalDetails?.institution || !registration.paperDetails?.abstract);
-
-    if (!registration || registration.status === 'Draft' || !registration.status || isMissingDetails) {
+    if (isAddingNew || registrations.length === 0) {
       return (
         <motion.div variants={overviewContainerVariants} initial="hidden" animate="visible">
           <motion.div variants={overviewItemVariants} className="bg-white/60 backdrop-blur-2xl p-8 md:p-10 rounded-[2.5rem] shadow-glass border border-white/60 max-w-5xl mx-auto relative cursor-default overflow-hidden">
-            <div className="absolute -top-32 -left-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-            <div className="flex justify-between items-center mb-8 border-b border-indigo-100/50 pb-6 relative z-10">
-              <h2 className="text-3xl font-bold text-slate-800">
-                {registration && (registration.status === 'Draft' || isMissingDetails) ? 'Continue Submission' : 'Start Submission'}
-              </h2>
+            <div className="flex justify-between items-center mb-8">
+               <h2 className="text-2xl font-black text-slate-800">New Submission</h2>
+               {registrations.length > 0 && (
+                 <button onClick={() => setIsAddingNew(false)} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                    <X size={20} />
+                 </button>
+               )}
             </div>
-            {isMissingDetails && registration?.status !== 'Draft' && (
-              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
-                <AlertCircle size={20} className="text-amber-500 shrink-0" />
-                <p className="text-sm font-semibold text-amber-800">Please complete all required registration details before proceeding to upload your manuscript.</p>
-              </div>
-            )}
+            <div className="absolute -top-32 -left-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
             <SubmissionFormSingle
-              registration={registration}
+              registration={null}
               user={user}
-              onSuccess={() => {
+              onSuccess={(newReg) => {
+                setIsAddingNew(false);
+                if (newReg?._id) setActiveRegistrationId(newReg._id);
                 fetchRegistration();
               }}
             />
@@ -770,25 +734,80 @@ const Dashboard = () => {
         </motion.div>
       );
     }
-    return renderMyPaper();
+
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Paper Selector List */}
+        <motion.div variants={overviewItemVariants} initial="hidden" animate="visible" className="bg-white/40 backdrop-blur-xl p-4 rounded-[2rem] border border-white/60 flex flex-wrap gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+          {registrations.map((reg) => (
+            <button
+              key={reg._id}
+              onClick={() => setActiveRegistrationId(reg._id)}
+              className={`px-5 py-3 rounded-2xl flex items-center gap-3 transition-all shrink-0 whitespace-nowrap border-2 ${activeRegistrationId === reg._id 
+                ? 'bg-indigo-600 text-white border-indigo-200 shadow-lg shadow-indigo-100' 
+                : 'bg-white/80 text-slate-600 border-transparent hover:bg-white hover:border-slate-100 shadow-sm'}`}
+            >
+              <div className={`w-2 h-2 rounded-full ${activeRegistrationId === reg._id ? 'bg-white' : (reg.status === 'Accepted' ? 'bg-emerald-400' : reg.status === 'Rejected' ? 'bg-red-400' : 'bg-amber-400')}`}></div>
+              <span className="text-xs font-black uppercase tracking-widest">{reg.paperId || `#${reg._id.slice(-6).toUpperCase()}`}</span>
+            </button>
+          ))}
+          <button 
+            onClick={() => setIsAddingNew(true)}
+            className="px-5 py-3 rounded-2xl flex items-center gap-2 bg-slate-900 text-white transition-all shadow-lg shadow-slate-200 hover:bg-slate-800 ml-auto"
+          >
+            <Upload size={14} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Add Paper</span>
+          </button>
+        </motion.div>
+
+        {activeRegistrationId && renderMyPaper(registrations.find(r => r._id === activeRegistrationId))}
+      </div>
+    );
   };
 
 
-  const renderMyPaper = () => {
+  const renderMyPaper = (registration) => {
+    if (!registration) return null;
+
     const handleEditDetails = () => {
       setEditData(true);
     };
+    
+    const isMissingDetails = !registration.personalDetails?.institution || !registration.paperDetails?.abstract;
+    
+    if (isMissingDetails) {
+        return (
+          <motion.div variants={overviewContainerVariants} initial="hidden" animate="visible">
+            <motion.div variants={overviewItemVariants} className="bg-white/60 backdrop-blur-2xl p-8 md:p-10 rounded-[2.5rem] shadow-glass border border-white/60 max-w-5xl mx-auto relative cursor-default overflow-hidden">
+               <div className="absolute -top-32 -left-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+               <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 relative z-10">
+                 <AlertCircle size={20} className="text-amber-500 shrink-0" />
+                 <p className="text-sm font-semibold text-amber-800">Please complete all required registration details before proceeding to upload your manuscript.</p>
+               </div>
+               <SubmissionFormSingle
+                 registration={registration}
+                 user={user}
+                 onSuccess={(newReg) => {
+                   if (newReg?._id) setActiveRegistrationId(newReg._id);
+                   fetchRegistration();
+                 }}
+               />
+            </motion.div>
+          </motion.div>
+        );
+    }
 
     const paperDetailsSection = (
       <>
         {/* Registration Details Group */}
         {editData ? (
-          <motion.div variants={overviewItemVariants} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-glass border border-white/80 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500">
+          <motion.div variants={overviewItemVariants} className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-100">
              <SubmissionFormSingle 
                 registration={registration} 
                 user={user} 
-                onSuccess={() => {
+                onSuccess={(newReg) => {
                     fetchRegistration();
+                    if (newReg?._id) setActiveRegistrationId(newReg._id);
                     setEditData(null);
                 }}
                 onCancel={() => setEditData(null)}
@@ -803,7 +822,7 @@ const Dashboard = () => {
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 flex items-center gap-2">
                   <Clock size={12} className="text-slate-400" /> Submitted: {registration?.createdAt ? new Date(registration.createdAt).toLocaleDateString() : 'N/A'}
                 </span>
-                {registration?.status !== 'Accepted' && (
+                {!['Accepted', 'Rejected'].includes(registration?.status) && (
                   <button
                     onClick={handleEditDetails}
                     className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-indigo-100/50 hover:border-indigo-200"
@@ -971,217 +990,184 @@ const Dashboard = () => {
                    </div>
                 </div>
               </div>
+
+              {/* Combined Manuscript Actions */}
+              <div className="pt-8 mt-8 border-t border-slate-100">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <Layers size={14} className="text-slate-400" /> Manuscript Actions
+                </h3>
+
+                {registration?.status !== 'Accepted' && (
+                  <div className="flex flex-col gap-4">
+                    {registration?.status === 'Rejected' ? (
+                      <div className="p-6 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center justify-center text-center">
+                        <AlertCircle size={32} className="text-red-500 mb-3" />
+                        <p className="text-sm font-bold text-red-800">
+                          This manuscript has been rejected. The decision is final and no further re-submissions are permitted.
+                        </p>
+                      </div>
+                    ) : !registration?.paperDetails?.fileUrl ? (
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept=".doc,.docx"
+                          onChange={handleFullPaperUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
+                          disabled={uploading}
+                        />
+                        <button className="w-full relative z-0 flex items-center justify-center gap-3 bg-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 pointer-events-none">
+                          {uploading ? (
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          ) : <Upload size={18} />}
+                          {uploading ? 'Uploading...' : 'Upload Manuscript (Word)'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button onClick={() => handleDownload(registration._id)} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
+                          <Download size={18} />
+                          Download Manuscript
+                        </button>
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept=".doc,.docx"
+                            onChange={handleFullPaperUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
+                            disabled={uploading}
+                          />
+                          <button className="w-full h-full flex items-center justify-center gap-2 bg-slate-50 text-slate-500 border border-slate-200 px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-100 transition-all pointer-events-none">
+                            {uploading ? 'Updating...' : 'Update Manuscript'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {registration?.status === 'Accepted' && registration?.paperDetails?.fileUrl && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button onClick={() => handleDownload(registration._id)} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
+                      <Download size={18} />
+                      Download Manuscript
+                    </button>
+                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-center justify-center">
+                      <p className="text-xs font-bold text-amber-700 flex items-center gap-2">
+                        <ShieldCheck size={14} /> Editing locked after {registration.status.toLowerCase()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
       </>
-    );
+      );
 
-    const actionSection = (
-      <motion.div variants={overviewItemVariants} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] shadow-glass border border-white/80 hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-500">
-        <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-6 flex items-center gap-2">
-          <Layers size={14} className="text-slate-400" /> Manuscript Actions
-        </h3>
-
-        {registration?.status !== 'Accepted' && (
-          <div className="flex flex-col gap-4">
-            {registration?.status === 'Rejected' && registration?.paperDetails?.reuploadRequestStatus !== 'Approved' ? (
-              <div className="p-6 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center justify-center text-center">
-                <p className="text-sm font-bold text-red-800 mb-4">
-                  Your manuscript was rejected. You must request approval to re-upload a revised version.
-                </p>
-                {registration?.paperDetails?.reuploadRequestStatus === 'Pending' ? (
-                  <button className="w-full sm:w-auto px-6 py-3 bg-red-200 text-red-700 font-bold rounded-xl pointer-events-none">
-                    Re-upload Request Pending
-                  </button>
-                ) : (
-                  <button onClick={handleRequestReupload} className="w-full sm:w-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-200">
-                    Request Re-upload
-                  </button>
-                )}
-              </div>
-            ) : !registration?.paperDetails?.fileUrl ? (
-              <div className="relative">
-                <input
-                  type="file"
-                  accept=".doc,.docx"
-                  onChange={handleFullPaperUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
-                  disabled={uploading}
-                />
-                <button className="w-full relative z-0 flex items-center justify-center gap-3 bg-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 pointer-events-none">
-                  {uploading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : <Upload size={18} />}
-                  {uploading ? 'Uploading...' : 'Upload Manuscript (Word)'}
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button onClick={handleDownload} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
-                  <Download size={18} />
-                  Download Manuscript
-                </button>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".doc,.docx"
-                    onChange={handleFullPaperUpload}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
-                    disabled={uploading}
-                  />
-                  <button className="w-full h-full flex items-center justify-center gap-2 bg-slate-50 text-slate-500 border border-slate-200 px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-100 transition-all pointer-events-none">
-                    {uploading ? 'Updating...' : 'Update Manuscript'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {registration?.status === 'Accepted' && registration?.paperDetails?.fileUrl && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button onClick={handleDownload} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
-              <Download size={18} />
-              Download Manuscript
-            </button>
-            <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-center justify-center">
-              <p className="text-xs font-bold text-amber-700 flex items-center gap-2">
-                <ShieldCheck size={14} /> Editing locked after {registration.status.toLowerCase()}
-              </p>
-            </div>
-          </div>
-        )}
-      </motion.div>
-    );
-
-    const hasFileUrl = !!registration?.paperDetails?.fileUrl;
-
-    return (
+      return (
       <motion.div variants={overviewContainerVariants} initial="hidden" animate="visible" className="max-w-4xl mx-auto space-y-6 pb-12">
-        {!hasFileUrl && actionSection}
         {paperDetailsSection}
-        {hasFileUrl && actionSection}
       </motion.div>
     );
   };
 
-  const renderPayment = () => (
-    <motion.div variants={overviewContainerVariants} initial="hidden" animate="visible">
-      <motion.div variants={overviewItemVariants} className="mb-8 flex items-center gap-3">
-        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><CreditCard size={24} /></div>
-        <h3 className="text-2xl font-bold text-slate-800">Billing Dashboard</h3>
-      </motion.div>
+  const renderPayment = () => {
+    const totalBalance = registrations.reduce((acc, reg) => {
+      if (reg.paymentStatus !== 'Completed' && reg.status === 'Accepted') {
+        return acc + calculateCurrentFee(reg);
+      }
+      return acc;
+    }, 0);
 
-      <div className="flex flex-col gap-6 relative z-10">
-        <div className="bg-white/70 backdrop-blur-xl p-6 md:p-8 rounded-[2.5rem] shadow-glass border border-white/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/5">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Payment Balance</p>
-            <p className="text-3xl font-black text-slate-800">₹ {registration?.paymentStatus === 'Completed' ? '0' : currentFee}</p>
-          </div>
-          <div className="sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Verification</p>
-            <div className={`px-4 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wide inline-block ${registration?.paymentStatus === 'Completed' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-              {registration?.paymentStatus || 'Awaiting'}
+    return (
+      <motion.div variants={overviewContainerVariants} initial="hidden" animate="visible" className="space-y-6 pb-12">
+        {/* Simplified Header */}
+        <motion.div variants={overviewItemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+              <CreditCard size={20} />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Outstanding Balance</p>
+              <p className="text-xl font-black text-slate-800 tracking-tight">₹ {totalBalance}</p>
             </div>
           </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-          <div className="bg-white/70 backdrop-blur-xl rounded-[2.5rem] p-6 md:p-8 shadow-glass border border-white/80 transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/5">
-            <h4 className="font-extrabold text-slate-800 mb-6 text-lg">Fee Breakdown</h4>
-            <div className="flex justify-between py-3 border-b border-slate-50">
-              <span className="text-slate-500 font-medium text-sm">Main Author ({registration?.personalDetails?.category})</span>
-              <span className="font-bold text-slate-700">₹ {categoryAmounts[registration?.personalDetails?.category] || 1000}</span>
-            </div>
-            {registration?.teamMembers?.map((member, idx) => (
-              <div key={idx} className="flex justify-between py-3 border-b border-slate-50">
-                <span className="text-slate-500 font-medium text-sm">Co-Author {idx + 1} ({member.category})</span>
-                <span className="font-bold text-slate-700">₹ {categoryAmounts[member.category] || 1000}</span>
-              </div>
-            ))}
-            <div className="flex justify-between py-3 border-b border-slate-50">
-              <span className="text-slate-500 font-medium text-sm">Processing Fee (0%)</span>
-              <span className="font-bold text-slate-700">₹ 0</span>
-            </div>
-            <div className="flex justify-between pt-6 mt-2">
-              <span className="font-extrabold text-slate-400 uppercase tracking-widest text-xs">Total Amount</span>
-              <p className="text-xl font-black text-slate-900">₹ {currentFee}</p>
-            </div>
+          <div className="text-right">
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Portfolio</p>
+             <p className="text-sm font-black text-slate-700 uppercase tracking-tighter">{registrations.length} Submissions</p>
           </div>
+        </motion.div>
 
-          <div className="rounded-[2.5rem] p-6 md:p-10 bg-indigo-50/40 backdrop-blur-md border border-indigo-100/50 flex flex-col items-center justify-center text-center relative overflow-hidden shadow-glass transition-all duration-500 hover:shadow-2xl hover:shadow-indigo-500/10">
-            {/* Decor */}
-            <div className="absolute -top-10 -right-10 w-48 h-48 bg-indigo-300/20 rounded-full blur-3xl pointer-events-none"></div>
-            <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-blue-300/20 rounded-full blur-3xl pointer-events-none"></div>
-
-            {registration?.paymentStatus === 'Completed' ? (
-              <div className="relative z-10">
-                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
-                  <CheckCircle size={32} />
-                </div>
-                <h4 className="text-xl font-bold text-slate-800 mb-2">Paid in Full</h4>
-                <p className="text-slate-500 text-sm font-medium">Your registration is confirmed. We look forward to seeing you!</p>
-              </div>
-            ) : registration?.status === 'Accepted' ? (
-              <div className="relative z-10 w-full">
-                <h4 className="text-xl font-bold text-slate-800 mb-2">Checkout Ready</h4>
-
-                {settings?.onlinePaymentEnabled === false ? (
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center shadow-inner my-6">
-                    <AlertCircle size={32} className="text-amber-500 mx-auto mb-3" />
-                    <p className="text-amber-800 font-bold text-sm mb-1">Online Payments Unavailable</p>
-                    <p className="text-amber-700 text-xs">Please pay the registration fee at the venue during verification.</p>
+        {/* Simplified Paper List */}
+        <div className="space-y-4">
+          {registrations.map((reg, idx) => {
+            const fee = calculateCurrentFee(reg);
+            const isIndividualLoading = paymentLoading === reg._id;
+            
+            return (
+              <motion.div key={reg._id} variants={overviewItemVariants} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden border-l-4 border-l-slate-200">
+                <div className="p-6 flex flex-col md:flex-row gap-6 items-center">
+                  {/* Status & Title */}
+                  <div className="flex-1 min-w-0 w-full">
+                    <div className="flex items-center gap-2 mb-2">
+                       <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest border ${getStatusColor(reg.status)}`}>{reg.status}</span>
+                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{reg.paperId || `Submission ${idx+1}`}</span>
+                    </div>
+                    <h4 className="text-base font-bold text-slate-800 truncate mb-1" title={reg.paperDetails?.title}>{reg.paperDetails?.title || 'No Title Provided'}</h4>
+                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-[0.1em]">{reg.personalDetails?.category}</p>
                   </div>
-                ) : (
-                  <>
-                    <p className="text-slate-500 mb-8 text-sm font-medium">Securely pay using UPI, Card or Internet Banking.</p>
-                    <button
-                      onClick={handlePayment}
-                      disabled={paymentLoading}
-                      className="w-full btn btn-primary py-3.5 rounded-xl shadow-lg shadow-indigo-200 font-bold flex items-center justify-center gap-2"
-                    >
-                      {paymentLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <CreditCard size={18} />}
-                      {paymentLoading ? 'Processing...' : 'Continue to Payment'}
-                    </button>
-                  </>
-                )}
-              </div>
-            ) : registration?.status === 'Draft' ? (
-              <div className="relative z-10">
-                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
-                  <FileText size={32} />
+
+                  {/* Pricing Breakdown (Compact) */}
+                  <div className="flex gap-4 px-6 md:border-x border-slate-50 w-full md:w-auto">
+                     <div className="text-center">
+                        <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Fee per Author</p>
+                        <p className="text-xs font-bold text-slate-700">₹{fee}</p>
+                     </div>
+                  </div>
+
+                  {/* Precise Action Button */}
+                  <div className="w-full md:w-48 shrink-0">
+                    {reg.paymentStatus === 'Completed' ? (
+                      <div className="flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 py-2.5 rounded-xl border border-emerald-100">
+                        <CheckCircle size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Paid</span>
+                      </div>
+                    ) : reg.status === 'Accepted' ? (
+                        <button
+                          onClick={() => handlePayment(reg._id)}
+                          disabled={paymentLoading && paymentLoading !== reg._id}
+                          className="w-full py-2.5 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-30 active:scale-95"
+                        >
+                          {isIndividualLoading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <CreditCard size={14} />}
+                          {isIndividualLoading ? 'Wait...' : 'Pay Now'}
+                        </button>
+                    ) : (
+                      <div className="text-center py-2 bg-slate-50 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Reviewing</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <h4 className="text-xl font-bold text-slate-800 mb-2">Registration in Draft</h4>
-                <p className="text-slate-500 text-sm font-medium mb-6">You haven't completed your application yet.</p>
-                <Link to="/register" className="inline-block bg-white text-indigo-600 border border-indigo-200 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-colors">Resume Registration</Link>
-              </div>
-            ) : (
-              <div className="relative z-10">
-                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-sm">
-                  <Clock size={32} />
-                </div>
-                <h4 className="text-xl font-bold text-slate-800 mb-2">Verification in Progress</h4>
-                <p className="text-slate-500 text-sm font-medium">Reviewing your paper. Payment will be enabled once accepted.</p>
-              </div>
-            )}
-          </div>
+              </motion.div>
+            );
+          })}
         </div>
-      </div>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  };
 
   const renderCertificate = () => (
     <div className="animate-fade-in max-w-4xl mx-auto h-full flex items-center justify-center pt-10">
-      <div className="bg-white/60 backdrop-blur-2xl p-8 md:p-12 rounded-[2.5rem] shadow-glass border border-white/80 relative overflow-hidden text-center w-full">
+      <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 relative overflow-hidden text-center w-full">
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-amber-100">
+        <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm border border-amber-100">
           <Lock size={40} />
         </div>
 
-        <h3 className="text-2xl md:text-3xl font-black text-slate-800 uppercase tracking-tight mb-4">
-          E-Certificate Locked
+        <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight mb-4">
+          Verification in Progress
         </h3>
 
         <p className="text-slate-500 font-medium mb-8 max-w-md mx-auto">
@@ -1263,6 +1249,9 @@ const Dashboard = () => {
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                 <span className="text-[0.6rem] font-black text-slate-400 uppercase tracking-widest truncate">{user?.role} portal</span>
+              </div>
+              <div className="flex items-center gap-1.5 mt-1 border-t border-slate-200/50 pt-1">
+                <span className="text-[0.55rem] font-black text-indigo-600 font-mono tracking-tight">{registration?.userId?.delegateId || user.delegateId || '----'}</span>
               </div>
             </div>
           </div>
@@ -1426,10 +1415,9 @@ const Dashboard = () => {
             {activeTab === 'certificate' && renderCertificate()}
             {activeTab === 'notifications' && (
               <div className="animate-fade-in max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Recent Updates</h3>
+                <div className="flex justify-end items-center mb-6">
                   {notifications.some(n => !n.isRead) && (
-                    <button onClick={handleMarkAllAsRead} className="text-xs font-bold text-indigo-600 hover:text-indigo-700">Mark all as read</button>
+                    <button onClick={handleMarkAllAsRead} className="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-all">Mark all as read</button>
                   )}
                 </div>
 
@@ -1475,12 +1463,9 @@ const Dashboard = () => {
             )}
             {activeTab === 'settings' && (
               <div className="animate-fade-in">
-                <div className="bg-white/60 backdrop-blur-2xl p-6 md:p-10 rounded-[2.5rem] shadow-glass border border-white/80 max-w-4xl relative overflow-hidden">
+                <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 max-w-4xl relative overflow-hidden">
                   <div className="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                  <h3 className="text-2xl font-black mb-8 md:mb-10 flex items-center gap-3 text-slate-800 uppercase tracking-tight relative z-10">
-                    <span className="p-2 bg-slate-100 rounded-lg"><Settings size={24} className="text-slate-500" /></span> Account Settings
-                  </h3>
-                  <div className="space-y-12">
+                  <div className="space-y-12 pt-4">
                     <div>
                       <h4 className="text-[0.65rem] font-black uppercase text-slate-400 mb-6 tracking-[0.2em]">Profile Information</h4>
                       <div className="grid md:grid-cols-2 gap-8">
@@ -1708,8 +1693,8 @@ const Dashboard = () => {
                       <div className="max-w-[60%]">
                         <h5 className="text-xl font-black text-indigo-950 leading-tight uppercase tracking-tight line-clamp-2">{user.name}</h5>
                         <div className="mt-1.5 space-y-1">
-                          <p className="text-xs font-black text-indigo-600 tracking-wider">
-                            {registration.authorId || `#CMP-26-${registration._id.slice(-6).toUpperCase()}`}
+                          <p className="text-xs font-black text-indigo-600 tracking-wider font-mono">
+                            {registration?.userId?.delegateId || user.delegateId || 'DELEGATE'}
                           </p>
                           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Date: 29.04.2026</p>
                         </div>
@@ -1721,7 +1706,7 @@ const Dashboard = () => {
                               <div key={i} style={{ width: `${w * 2}px` }} className="bg-slate-900" />
                             ))}
                           </div>
-                          <span className="text-[7px] font-black tracking-[0.3em]">{registration._id.slice(-10).toUpperCase()}</span>
+                          <span className="text-[7px] font-black tracking-[0.3em] font-mono">{registration?.userId?.delegateId || user.delegateId || 'CIETM-2026'}</span>
                         </div>
                       </div>
                     </div>
@@ -1738,7 +1723,7 @@ const Dashboard = () => {
                 >
                   <div className="w-full h-full bg-[#1a237e] rounded-3xl shadow-2xl overflow-hidden relative border border-indigo-800 text-white p-8 px-10 flex gap-10 items-center">
                     <div className="bg-white p-3 rounded-2xl shadow-2xl shrink-0 border-4 border-white/10 ring-1 ring-white/20">
-                      <QRCode value={registration._id} size={110} />
+                      <QRCode value={registration?.userId?.delegateId || user.delegateId || user._id} size={110} />
                     </div>
 
                     <div className="flex-1 h-full flex flex-col justify-between py-2">
@@ -1836,8 +1821,8 @@ const Dashboard = () => {
                   <div className="w-[60%]">
                     <h5 className="text-[4.2mm] font-black text-indigo-950 uppercase leading-tight line-clamp-2">{user.name}</h5>
                     <div className="mt-[2mm] space-y-[0.5mm]">
-                      <span className="text-[2.2mm] font-black text-indigo-600 tracking-widest block">
-                        {registration.authorId || `#CMP-26-${registration._id.slice(-6).toUpperCase()}`}
+                      <span className="text-[2.2mm] font-black text-indigo-600 tracking-widest block font-mono">
+                        {registration?.userId?.delegateId || user.delegateId || 'DELEGATE'}
                       </span>
                       <span className="text-[1.8mm] font-bold text-slate-400 uppercase tracking-widest block">Date: 29.04.2026</span>
                     </div>
@@ -1848,7 +1833,7 @@ const Dashboard = () => {
                           <div key={i} style={{ width: `${w}mm` }} className="bg-slate-900" />
                         ))}
                       </div>
-                      <span className="text-[2mm] font-black tracking-[0.3em]">{registration._id.slice(-10).toUpperCase()}</span>
+                      <span className="text-[2mm] font-black tracking-[0.3em] font-mono">{registration?.userId?.delegateId || user.delegateId || 'CIETM-2026'}</span>
                     </div>
                   </div>
                 </div>
@@ -1860,7 +1845,7 @@ const Dashboard = () => {
               {/* Card Back */}
               <div className="w-[85.6mm] h-[53.98mm] bg-[#1a237e] rounded-[4mm] overflow-hidden relative border-[0.5mm] border-indigo-900 mx-auto font-sans shadow-none text-white p-[8mm] px-[10mm] flex gap-[8mm] items-center">
                 <div className="bg-white p-[1.5mm] rounded-[3mm] shrink-0 border-[1mm] border-white/10">
-                  <QRCode value={registration._id} size={42} style={{ height: "18mm", width: "18mm" }} />
+                  <QRCode value={registration?.userId?.delegateId || user.delegateId || user._id} size={42} style={{ height: "18mm", width: "18mm" }} />
                 </div>
                 <div className="flex-1 flex flex-col justify-between py-[1mm]">
                   <div className="space-y-[3mm]">

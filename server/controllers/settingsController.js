@@ -37,17 +37,30 @@ const updateSettings = async (req, res) => {
 // @route   POST /api/settings/broadcast
 // @access  Admin
 const broadcastNotification = async (req, res) => {
-    const { title, message, type } = req.body;
+    const { title, message, type, roles } = req.body;
     try {
-        const users = await User.find({ role: 'author' });
+        // Find users based on provided roles, or default to 'author' if none provided
+        const query = roles && roles.length > 0 ? { role: { $in: roles } } : { role: 'author' };
+        const users = await User.find(query);
 
-        const notificationPromises = users.map(user =>
-            createNotification(user._id, title, message, type || 'info', '/dashboard')
-        );
+        if (users.length === 0) {
+            return res.status(404).json({ message: "No users found for the selected roles" });
+        }
+
+        const notificationPromises = users.map(user => {
+            const roleLinks = {
+                'author': '/dashboard',
+                'reviewer': '/reviewer/dashboard',
+                'chair': '/chair/dashboard',
+                'admin': '/admin/dashboard'
+            };
+            const targetLink = roleLinks[user.role] || '/dashboard';
+            return createNotification(user._id, title, message, type || 'info', targetLink);
+        });
 
         await Promise.all(notificationPromises);
 
-        res.json({ message: `Notification sent to ${users.length} users` });
+        res.json({ message: `Notification sent to ${users.length} users (${roles?.join(', ') || 'author'})` });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -62,10 +75,12 @@ const exportRegistrations = async (req, res) => {
 
         const csvData = registrations.map(reg => {
             const data = {
+                'Delegate ID': reg.userId?.delegateId || 'N/A',
+                'Paper ID': reg.paperId || (reg.authorId || `#PAPER-${reg._id.toString().slice(-6).toUpperCase()}`),
                 'Principal Author Name': reg.personalDetails?.name || reg.userId?.name,
                 'Principal Email': reg.personalDetails?.email || reg.userId?.email,
                 'Mobile Number': reg.personalDetails?.mobile || reg.userId?.phone || 'N/A',
-                'Author Type': (reg.personalDetails?.category?.toLowerCase().includes('external') || reg.personalDetails?.institution?.toLowerCase().includes('external')) ? 'External' : 'Internal / Other',
+                'Author Type': (reg.personalDetails?.category?.toLowerCase().includes('external') || reg.personalDetails?.institution?.toLowerCase().includes('external')) ? 'External' : 'Internal',
                 'Author Category': reg.personalDetails?.category,
                 'Affiliation (Institute/Industry)': reg.personalDetails?.institution,
                 'Department': reg.personalDetails?.department,

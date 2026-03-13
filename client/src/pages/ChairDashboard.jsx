@@ -87,7 +87,7 @@ const ChairDashboard = () => {
   const [search, setSearch] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [analytics, setAnalytics] = useState(null);
+
   const [filter, setFilter] = useState('All');
   const [selectedReg, setSelectedReg] = useState(null);
   const [scannedResult, setScannedResult] = useState(null);
@@ -106,6 +106,8 @@ const ChairDashboard = () => {
     college: user?.college || '',
     password: ''
   });
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -142,20 +144,76 @@ const ChairDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    fetchNotifications();
   }, []);
+
+  const fetchNotifications = async () => {
+    setNotificationsLoading(true);
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      const { data } = await axios.get('/api/notifications', config);
+      setNotifications(data);
+    } catch (error) {
+      console.error("Failed to fetch notifications");
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.put(`/api/notifications/${id}/read`, {}, config);
+      setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: true } : n));
+    } catch (error) {
+      toast.error("Failed to update notification");
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.put('/api/notifications/read-all', {}, config);
+      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      toast.error("Action failed");
+    }
+  };
+
+  const handleNotificationAction = (notification) => {
+    if (!notification.link) return;
+
+    if (!notification.isRead) {
+      handleMarkAsRead(notification._id);
+    }
+
+    if (notification.link.includes('paperId=')) {
+      const paperId = notification.link.split('paperId=')[1];
+      setActiveTab('submissions');
+      setSearch(paperId); // Search for the specific ID
+      
+      const reg = registrations.find(r => r._id === paperId);
+      if (reg) {
+        setSelectedReg(reg);
+      }
+    } else {
+      setActiveTab('submissions');
+    }
+  };
 
   const fetchData = async () => {
     setRefreshing(true);
     try {
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
-      const [regRes, anaRes, revRes] = await Promise.all([
+      const [regRes, revRes, notifRes] = await Promise.all([
         axios.get('/api/registrations', config),
-        axios.get('/api/registrations/analytics', config),
-        axios.get('/api/auth/users', config).then(res => res.data.filter(u => u.role === 'reviewer'))
+        axios.get('/api/auth/users', config).then(res => res.data.filter(u => u.role === 'reviewer')),
+        axios.get('/api/notifications', config)
       ]);
       setRegistrations(regRes.data);
-      setAnalytics(anaRes.data);
       setReviewers(revRes);
+      setNotifications(notifRes.data);
     } catch (error) {
       toast.error("Failed to sync dashboard data");
     } finally {
@@ -193,8 +251,11 @@ const ChairDashboard = () => {
     } catch (error) {
       const message = error.response?.data?.message || "Invalid QR Code";
       toast.error(message, { id: loadingToast });
-      if (error.response?.data?.status === 'Draft') setScannedResult(error.response.data);
-      else setScannedResult(null);
+      if (error.response?.data?.personalDetails) {
+        setScannedResult(error.response.data);
+      } else {
+        setScannedResult(null);
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -343,10 +404,12 @@ const ChairDashboard = () => {
       const matchesFilter = filter === 'All' || reg.status === filter;
       const authorName = reg.personalDetails?.name || reg.userId?.name || '';
       const paperTitle = reg.paperDetails?.title || '';
-      const authorId = reg.authorId || `#CMP-26-${reg._id.slice(-6).toUpperCase()}`;
+      const paperId = reg.paperId || (reg.authorId || `#PAPER-${reg._id.slice(-6).toUpperCase()}`);
+      const delegateId = reg.userId?.delegateId || '';
       const matchesSearch = authorName.toLowerCase().includes(search.toLowerCase()) ||
         paperTitle.toLowerCase().includes(search.toLowerCase()) ||
-        authorId.toLowerCase().includes(search.toLowerCase());
+        paperId.toLowerCase().includes(search.toLowerCase()) ||
+        delegateId.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
     }).filter(reg => reg.status !== 'Draft');
   }, [registrations, filter, search]);
@@ -371,22 +434,25 @@ const ChairDashboard = () => {
           <nav className="space-y-1">
             {[
               { id: 'overview', label: 'Monitor Board', icon: LayoutDashboard },
-              { id: 'submissions', label: 'Paper Submissions', icon: Layers },
-              { id: 'entry', label: 'On-site Entry', icon: ScanLine },
-              { id: 'updates', label: 'Pending Updates', icon: Bell },
-              { id: 'assignments', label: 'Reviewers', icon: Users },
+              { id: 'submissions', label: 'Paper Submissions', icon: FileCheck },
+              { id: 'notifications', label: 'Inbox', icon: Bell, count: notifications.filter(n => !n.isRead).length },
               { id: 'settings', label: 'Settings', icon: Settings },
             ].map(item => (
               <button
                 key={item.id}
                 onClick={() => { setActiveTab(item.id); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${activeTab === item.id
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all relative ${activeTab === item.id
                   ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
                   : 'text-slate-500 hover:bg-slate-50 hover:text-indigo-600'
                   }`}
               >
                 <item.icon size={18} />
                 {item.label}
+                {item.count > 0 && (
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse border-2 border-white">
+                    {item.count}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -441,22 +507,167 @@ const ChairDashboard = () => {
 
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Submissions</p>
-                <p className="text-3xl font-black text-slate-800">{filteredData.length}</p>
+            <div className="space-y-8 animate-fade-in">
+              {/* KPI Section */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                       <Layers size={12} className="text-indigo-600" /> Intake Velocity
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-black text-slate-800 tracking-tight">{filteredData.length}</p>
+                      <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">+12%</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">Total Active Manuscripts</p>
+                  </div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+                  <div className="relative z-10">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                       <CheckCircle size={12} className="text-emerald-600" /> Completion Rate
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-black text-slate-800 tracking-tight">
+                        {Math.round((filteredData.filter(r => r.status === 'Accepted').length / (filteredData.length || 1)) * 100)}%
+                      </p>
+                      <span className="text-[10px] font-bold text-slate-400">{filteredData.filter(r => r.status === 'Accepted').length} Finalized</span>
+                    </div>
+                    <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                       <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(filteredData.filter(r => r.status === 'Accepted').length / (filteredData.length || 1)) * 100}%` }}></div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+                   <div className="relative z-10">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                       <Clock size={12} className="text-amber-500" /> Evaluation Pulse
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-black text-slate-800 tracking-tight">
+                         {filteredData.filter(r => r.status === 'Under Review').length}
+                      </p>
+                      <span className="text-[10px] font-bold text-amber-500">Active Review</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">Papers currently with board</p>
+                  </div>
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+                   <div className="relative z-10">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                       <Users size={12} className="text-blue-600" /> Assign Queue
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-black text-slate-800 tracking-tight">
+                         {filteredData.filter(r => r.status === 'Submitted' && !r.paperDetails?.assignedReviewer).length}
+                      </p>
+                      <span className="text-[10px] font-bold text-blue-500">Unassigned</span>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">Action needed to distribute</p>
+                  </div>
+                </motion.div>
               </div>
-              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm text-green-600">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Finalized</p>
-                <p className="text-3xl font-black">{filteredData.filter(r => r.status === 'Accepted').length}</p>
-              </div>
-              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm text-amber-500">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">In Review</p>
-                <p className="text-3xl font-black">{filteredData.filter(r => r.status === 'Under Review').length}</p>
-              </div>
-               <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm text-blue-500">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pending Assignments</p>
-                <p className="text-3xl font-black">{filteredData.filter(r => r.status === 'Submitted' && !r.paperDetails?.reviewerComments).length}</p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                 {/* Track Breakdown Container */}
+                 <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm">
+                    <div className="flex justify-between items-center mb-8">
+                       <div>
+                          <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Track Distribution</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Submission volume across domains</p>
+                       </div>
+                       <div className="flex items-center gap-2">
+                          <button onClick={() => setActiveTab('submissions')} className="px-4 py-2 bg-slate-50 text-[10px] font-black uppercase text-slate-500 rounded-xl hover:bg-slate-100 transition-all border border-slate-100">Details</button>
+                       </div>
+                    </div>
+
+                    <div className="space-y-5">
+                       {CONFERENCE_TRACKS.map((track, idx) => {
+                          const count = registrations.filter(r => r.paperDetails?.track === track.id).length;
+                          const percentage = Math.round((count / (registrations.length || 1)) * 100);
+                          return (
+                             <div key={track.id} className="group cursor-default">
+                                <div className="flex justify-between items-end mb-2">
+                                   <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-[10px] group-hover:bg-indigo-600 group-hover:text-white transition-all">0{idx + 1}</div>
+                                      <p className="text-[11px] font-extrabold text-slate-700 uppercase tracking-tight max-w-[200px] md:max-w-none truncate">{track.label.split(': ')[1]}</p>
+                                   </div>
+                                   <div className="text-right">
+                                      <span className="text-[11px] font-black text-slate-800">{count}</span>
+                                      <span className="text-[9px] font-bold text-slate-400 ml-1">Papers</span>
+                                   </div>
+                                </div>
+                                <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100/50">
+                                   <motion.div 
+                                     initial={{ width: 0 }} 
+                                     animate={{ width: `${percentage}%` }} 
+                                     transition={{ duration: 1, delay: idx * 0.1 }}
+                                     className={`h-full rounded-full ${percentage > 40 ? 'bg-indigo-600' : 'bg-indigo-400'}`}
+                                   ></motion.div>
+                                </div>
+                             </div>
+                          );
+                       })}
+                    </div>
+                 </div>
+
+                 {/* Review Board Status - Replaced Financial Card */}
+                 <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm flex flex-col">
+                    <div className="flex items-center gap-3 mb-8">
+                       <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                          <TrendingUp size={16} />
+                       </div>
+                       <div>
+                          <h4 className="text-sm font-black text-slate-800 uppercase tracking-tight">Board Pulse</h4>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Live reviewer activity</p>
+                       </div>
+                    </div>
+
+                    <div className="space-y-6 flex-1">
+                       <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:border-emerald-200">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                             <CheckCircle size={10} className="text-emerald-500" /> Evaluations Logged
+                          </p>
+                          <p className="text-2xl font-black text-slate-800 tracking-tight">
+                             {registrations.filter(r => r.paperDetails?.reviewerComments).length}
+                          </p>
+                       </div>
+
+                       <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 transition-all hover:border-indigo-200">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                             <Users size={10} className="text-indigo-500" /> Expertise Cover
+                          </p>
+                          <div className="flex items-center justify-between">
+                             <p className="text-2xl font-black text-slate-800 tracking-tight">
+                                {Math.round((reviewers.filter(rev => (rev.assignedTracks || []).length > 0).length / (reviewers.length || 1)) * 100)}%
+                             </p>
+                             <div className="h-1.5 w-16 bg-slate-200 rounded-full overflow-hidden">
+                                <div 
+                                   className="h-full bg-indigo-500 rounded-full" 
+                                   style={{ width: `${(reviewers.filter(rev => (rev.assignedTracks || []).length > 0).length / (reviewers.length || 1)) * 100}%` }}
+                                ></div>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="p-5 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-100">
+                          <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">System Health</p>
+                          <div className="flex items-center justify-between">
+                             <p className="text-sm font-black">Sync Stable</p>
+                             <span className="flex items-center gap-1.5 text-[9px] font-black uppercase bg-white/10 px-2 py-0.5 rounded-full">
+                                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> LIVE
+                             </span>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
               </div>
             </div>
           )}
@@ -505,22 +716,22 @@ const ChairDashboard = () => {
 
               <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-left">
+                  <table className="w-full text-left border-collapse table-fixed">
                     <thead>
-                      <tr className="bg-slate-50/50 border-b border-slate-100">
-                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Primary Author</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Research Title</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Track</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Reviewer</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Attendance</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                      <tr className="bg-slate-50/50 border-b border-slate-100 uppercase tracking-[0.1em] text-[10px] font-black text-slate-400">
+                        <th className="px-4 py-5 w-[20%]">Primary Author</th>
+                        <th className="px-4 py-5 w-[25%]">Research Title</th>
+                        <th className="px-4 py-5 w-[8%]">Track</th>
+                        <th className="px-4 py-5 w-[12%]">Reviewer</th>
+                        <th className="px-4 py-5 w-[10%]">Attendance</th>
+                        <th className="px-4 py-5 w-[10%]">Status</th>
+                        <th className="px-4 py-5 w-[15%] text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredData.map(reg => (
                         <tr key={reg._id} className="hover:bg-slate-50/50 transition-colors group">
-                          <td className="px-8 py-6">
+                          <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase cursor-pointer" onClick={() => setSelectedReg(reg)}>
                                 {(reg.personalDetails?.name || reg.userId?.name)?.charAt(0)}
@@ -528,23 +739,28 @@ const ChairDashboard = () => {
                               <div>
                                 <p className="text-sm font-black text-slate-800 leading-none">{reg.personalDetails?.name || reg.userId?.name}</p>
                                 <p className="text-[10px] font-semibold text-slate-400 mt-1">{reg.userId?.email}</p>
-                                <p className="text-[10px] font-bold text-indigo-600 mt-0.5 tracking-wider font-mono">
-                                   {reg.authorId || `#CMP-26-${reg._id.slice(-6).toUpperCase()}`}
-                                </p>
+                                <div className="flex flex-col gap-1 font-mono">
+                                   <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50/50 px-1.5 py-0.5 rounded border border-indigo-100/50 w-max">
+                                      {reg.userId?.delegateId || 'NO_USER_ID'}
+                                   </span>
+                                   <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 w-max">
+                                      {reg.paperId || (reg.authorId || `#PAPER-${reg._id.slice(-6).toUpperCase()}`)}
+                                   </span>
+                                </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-8 py-6">
+                          <td className="px-4 py-4">
                             <p className="text-sm font-bold text-slate-700 max-w-xs truncate group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => setSelectedReg(reg)}>
                                {reg.paperDetails?.title || 'Untitled Submission'}
                             </p>
                           </td>
-                          <td className="px-8 py-6">
+                          <td className="px-4 py-4">
                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded border border-slate-100 italic">
                                 {reg.paperDetails?.track || 'Not Specified'}
                              </span>
                           </td>
-                          <td className="px-8 py-6">
+                          <td className="px-4 py-4">
                                <select 
                                  className="w-full max-w-[150px] bg-slate-50 border-none rounded-lg py-1 px-2 text-[10px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
                                  value={reg.paperDetails?.assignedReviewer?._id || ''}
@@ -559,7 +775,7 @@ const ChairDashboard = () => {
                                  ))}
                                </select>
                           </td>
-                          <td className="px-8 py-6">
+                          <td className="px-4 py-4">
                             <div className="flex items-center gap-2">
                                {reg.attended ? (
                                  <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-tighter"><CheckCircle size={14} /> Present</span>
@@ -568,7 +784,7 @@ const ChairDashboard = () => {
                                )}
                             </div>
                           </td>
-                          <td className="px-8 py-6">
+                          <td className="px-4 py-4">
                             <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block shadow-sm ${
                                reg.status === 'Accepted' ? 'bg-blue-100 text-blue-700' :
                                reg.status === 'Rejected' ? 'bg-red-100 text-red-700' : 
@@ -579,14 +795,19 @@ const ChairDashboard = () => {
                                {reg.status === 'Submitted' && !reg.paperDetails?.fileUrl ? 'Pending Upload' : reg.status}
                              </span>
                           </td>
-                          <td className="px-8 py-6 text-right">
+                          <td className="px-4 py-6 text-right">
                              <div className="flex items-center justify-end gap-2">
                                 {reg.paperDetails?.fileUrl && (
                                   <a 
                                      href={`/api/registrations/download/${reg._id}?token=${user.token}`} 
-                                     target="_blank" rel="noreferrer"
                                      className="p-2.5 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
                                      title="Download Manuscript"
+                                     download={reg.paperId || (reg.authorId || `PAPER-${reg._id.slice(-6).toUpperCase()}`)}
+                                     onClick={() => {
+                                       if (reg.status === 'Submitted') {
+                                         setTimeout(fetchData, 2000);
+                                       }
+                                     }}
                                   >
                                      <Download size={16} />
                                   </a>
@@ -754,6 +975,82 @@ const ChairDashboard = () => {
                    </div>
                 </div>
              </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="animate-fade-in max-w-4xl mx-auto">
+              <div className="flex justify-between items-center mb-8">
+                <div>
+                   <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Notification Center</h2>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Management updates & alerts</p>
+                </div>
+                {notifications.some(n => !n.isRead) && (
+                  <button onClick={handleMarkAllAsRead} className="px-5 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all">Mark all as read</button>
+                )}
+              </div>
+
+              {notificationsLoading ? (
+                <div className="flex flex-col items-center justify-center p-20 gap-4">
+                  <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Fetching alerts...</p>
+                </div>
+              ) : notifications.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {notifications.map((n) => (
+                    <div
+                      key={n._id}
+                      onClick={() => !n.isRead && handleMarkAsRead(n._id)}
+                      className={`group p-6 rounded-[2rem] border transition-all relative overflow-hidden ${n.isRead ? 'bg-white border-slate-100' : 'bg-white border-indigo-200 shadow-md ring-1 ring-indigo-50'}`}
+                    >
+                      {!n.isRead && <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-600"></div>}
+                      <div className="flex gap-6">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border ${
+                          n.type === 'success' ? 'bg-blue-50 border-blue-100 text-blue-600' :
+                          n.type === 'error' ? 'bg-red-50 border-red-100 text-red-600' :
+                          n.type === 'warning' ? 'bg-amber-50 border-amber-100 text-amber-600' : 
+                          'bg-indigo-50 border-indigo-100 text-indigo-600'
+                        }`}>
+                          <Bell size={24} className={!n.isRead ? 'animate-bounce' : ''} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-4 mb-2">
+                            <h4 className="font-black text-slate-800 truncate text-lg">{n.title}</h4>
+                            {!n.isRead && (
+                              <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-black uppercase rounded-full tracking-tighter">New</span>
+                            )}
+                          </div>
+                          <p className="text-sm font-medium text-slate-500 leading-relaxed mb-4">{n.message}</p>
+                          <div className="flex items-center gap-4">
+                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                                <Clock size={12} /> {new Date(n.createdAt).toLocaleString()}
+                             </span>
+                             {n.link?.includes('paperId=') && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleNotificationAction(n);
+                                  }} 
+                                  className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center gap-1"
+                                >
+                                  View Submission <ChevronRight size={10} />
+                                </button>
+                             )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200 text-center">
+                  <div className="w-20 h-20 bg-slate-50 text-slate-300 rounded-3xl flex items-center justify-center mb-6">
+                    <Bell size={40} />
+                  </div>
+                  <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Your inbox is empty</h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Check back later for management updates</p>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'settings' && (

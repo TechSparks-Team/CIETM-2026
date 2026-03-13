@@ -51,19 +51,38 @@ const userSchema = new mongoose.Schema({
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+    delegateId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true
+    },
     createdAt: {
         type: Date,
         default: Date.now
     }
 });
 
-// Encrypt password using bcrypt
-userSchema.pre('save', async function () {
-    if (!this.isModified('password')) {
-        return;
+// Encrypt password and generate delegateId
+userSchema.pre('save', async function (next) {
+    if (this.isModified('password')) {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
     }
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+
+    if (!this.delegateId) {
+        let unique = false;
+        while (!unique) {
+            const random = Math.floor(100000 + Math.random() * 900000);
+            const id = `CIETM-${random}`;
+            const existingUser = await mongoose.models.User.findOne({ delegateId: id });
+            if (!existingUser) {
+                this.delegateId = id;
+                unique = true;
+            }
+        }
+    }
+    next();
 });
 
 // Match user entered password to hashed password in database

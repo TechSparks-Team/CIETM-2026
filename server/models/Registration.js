@@ -5,10 +5,9 @@ const registrationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
-        unique: true,
         index: true
     },
-    authorId: {
+    paperId: {
         type: String,
         unique: true,
         sparse: true,

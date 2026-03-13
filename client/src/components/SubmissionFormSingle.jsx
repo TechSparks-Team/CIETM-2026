@@ -137,12 +137,17 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
         }
       };
 
-      await axios.post('/api/registrations/draft', payload, {
+      const { data: savedReg } = await axios.post('/api/registrations/draft', {
+        ...payload,
+        id: registration?._id
+      }, {
         headers: { Authorization: `Bearer ${user.token}` }
       });
 
       if (isFinal) {
-        await axios.post('/api/registrations/submit', {}, {
+        await axios.post('/api/registrations/submit', {
+          id: savedReg._id
+        }, {
           headers: { Authorization: `Bearer ${user.token}` }
         });
         toast.success("Submission Completed!");
@@ -150,7 +155,7 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
         toast.success("Draft Saved!");
       }
 
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(savedReg);
     } catch (error) {
       toast.error(error.response?.data?.message || "Action failed");
     } finally {

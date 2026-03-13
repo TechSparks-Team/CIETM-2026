@@ -107,7 +107,7 @@ const AdminDashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [settings, setSettings] = useState(null);
   const [users, setUsers] = useState([]);
-  const [broadcast, setBroadcast] = useState({ title: '', message: '', type: 'info' });
+  const [broadcast, setBroadcast] = useState({ title: '', message: '', type: 'info', roles: ['author'] });
   const [newAuthor, setNewAuthor] = useState({ name: '', email: '', phone: '', password: '', role: 'author' });
   const [isCreatingAuthor, setIsCreatingAuthor] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -188,8 +188,8 @@ const AdminDashboard = () => {
       const message = error.response?.data?.message || "Invalid QR Code";
       toast.error(message, { id: loadingToast });
 
-      // Still show the card if it's just a draft status block so the admin can see details
-      if (error.response?.data?.status === 'Draft') {
+      // Still show the card if we found a record so the admin can see details and reason
+      if (error.response?.data?.personalDetails) {
         setScannedResult(error.response.data);
       } else {
         setScannedResult(null);
@@ -217,15 +217,16 @@ const AdminDashboard = () => {
   const handleBroadcast = async (e) => {
     e.preventDefault();
     if (!broadcast.title || !broadcast.message) return toast.error("Please fill all fields");
+    if (broadcast.roles.length === 0) return toast.error("Please select at least one target role");
 
     const loadingToast = toast.loading("Broadcasting notification...");
     try {
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
       await axios.post('/api/settings/broadcast', broadcast, config);
       toast.success(`Broadcasting complete`, { id: loadingToast });
-      setBroadcast({ title: '', message: '', type: 'info' });
+      setBroadcast({ title: '', message: '', type: 'info', roles: ['author'] });
     } catch (error) {
-      toast.error("Broadcast failed", { id: loadingToast });
+      toast.error(error.response?.data?.message || "Broadcast failed", { id: loadingToast });
     }
   };
 
@@ -425,17 +426,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleReuploadAction = async (id, action) => {
-    const loadingToast = toast.loading(`${action}ing re-upload request...`);
-    try {
-      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
-      await axios.post(`/api/registrations/${id}/handle-reupload-request`, { action }, config);
-      toast.success(`Request ${action.toLowerCase()}d successfully`, { id: loadingToast });
-      fetchAllData();
-    } catch (error) {
-      toast.error(`Failed to ${action.toLowerCase()} request`, { id: loadingToast });
-    }
-  };
+
 
   const filteredData = useMemo(() => {
     return registrations.filter(reg => {
@@ -447,10 +438,13 @@ const AdminDashboard = () => {
       const matchesFilter = filter === 'All' || reg.status === filter;
       const authorName = reg.personalDetails?.name || reg.userId?.name || '';
       const paperTitle = reg.paperDetails?.title || '';
-      const authorId = reg.authorId || `#CMP-26-${reg._id.slice(-6).toUpperCase()}`;
+      const paperId = reg.paperId || (reg.personalDetails?.authorId || '');
+      const delegateId = reg.userId?.delegateId || '';
+      
       const matchesSearch = authorName.toLowerCase().includes(search.toLowerCase()) ||
         paperTitle.toLowerCase().includes(search.toLowerCase()) ||
-        authorId.toLowerCase().includes(search.toLowerCase());
+        paperId.toLowerCase().includes(search.toLowerCase()) ||
+        delegateId.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
     });
   }, [registrations, filter, search]);
@@ -508,7 +502,6 @@ const AdminDashboard = () => {
               { id: 'submissions', label: 'Paper Submissions', icon: FileCheck },
               { id: 'users', label: 'User Directory', icon: Users },
               { id: 'verifier', label: 'On-site Entry', icon: ScanLine },
-              { id: 'updates', label: 'Updates', icon: Bell },
               { id: 'analytics', label: 'Growth Insights', icon: TrendingUp },
               { id: 'settings', label: 'System Settings', icon: Settings },
             ].map(item => (
@@ -629,10 +622,34 @@ const AdminDashboard = () => {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {[
-                    { label: 'Total Registrations', value: analytics?.overview?.totalRegistrations || 0, icon: Users, color: 'indigo', trend: '+12% this week' },
-                    { label: 'Papers Accepted', value: analytics?.overview?.totalAccepted || 0, icon: CheckCircle, color: 'blue', trend: '45% approval rate' },
-                    { label: 'Revenue Collected', value: `₹${analytics?.overview?.totalPayments?.toLocaleString() || 0}`, icon: IndianRupee, color: 'blue', trend: 'Payments synced' },
-                    { label: 'Pending Review', value: analytics?.overview?.totalPending || 0, icon: Clock, color: 'amber', trend: 'Needs attention' },
+                    { 
+                      label: 'Total Registrations', 
+                      value: analytics?.overview?.totalRegistrations || 0, 
+                      icon: Users, 
+                      color: 'indigo', 
+                      trend: `${Math.round(((analytics?.overview?.totalAccepted || 0) + (analytics?.overview?.totalPending || 0)) / (analytics?.overview?.totalRegistrations || 1) * 100)}% active papers` 
+                    },
+                    { 
+                      label: 'Papers Accepted', 
+                      value: analytics?.overview?.totalAccepted || 0, 
+                      icon: CheckCircle, 
+                      color: 'blue', 
+                      trend: `${Math.round((analytics?.overview?.totalAccepted || 0) / (analytics?.overview?.totalRegistrations || 1) * 100)}% approval rate` 
+                    },
+                    { 
+                      label: 'Revenue Collected', 
+                      value: `₹${analytics?.overview?.totalPayments?.toLocaleString() || 0}`, 
+                      icon: IndianRupee, 
+                      color: 'blue', 
+                      trend: `${Math.round((analytics?.overview?.completedPaymentsCount || 0) / (analytics?.overview?.totalAccepted || 1) * 100)}% payment efficacy` 
+                    },
+                    { 
+                      label: 'Pending Review', 
+                      value: analytics?.overview?.totalPending || 0, 
+                      icon: Clock, 
+                      color: 'amber', 
+                      trend: `${Math.round((analytics?.overview?.totalPending || 0) / (analytics?.overview?.totalRegistrations || 1) * 100)}% workload queue` 
+                    },
                   ].map((stat, i) => (
                     <motion.div
                       key={i}
@@ -646,7 +663,7 @@ const AdminDashboard = () => {
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
                       <p className="text-2xl md:text-3xl font-black text-slate-800 mb-4">{stat.value}</p>
                       <div className="flex items-center gap-2">
-                        <span className={`text-[8px] md:text-[9px] font-bold px-2 py-1 rounded-md bg-${stat.color}-50 text-${stat.color}-600`}>
+                        <span className={`text-[8px] md:text-[9px] font-black px-2 py-1 rounded-md bg-${stat.color}-50 text-${stat.color}-600 uppercase tracking-tighter`}>
                           {stat.trend}
                         </span>
                       </div>
@@ -656,29 +673,49 @@ const AdminDashboard = () => {
 
                 {/* Charts and Lists Group */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                  {/* Track Distribution Chart */}
+                  {/* Strategic Overview (Simplified) */}
                   <div className="xl:col-span-2 bg-white rounded-[2.5rem] border border-slate-100 p-6 md:p-8 shadow-sm">
-                    <div className="flex justify-between items-center mb-6 md:mb-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                       <div>
-                        <h3 className="text-lg font-black text-slate-800">Registration Velocity</h3>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Across Conference Tracks</p>
+                        <h3 className="text-lg font-black text-slate-800 tracking-tight">Strategic Overview</h3>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">Finance & Track Distribution</p>
                       </div>
-                      <div className="flex gap-2">
-                        <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors"><PieChart size={18} className="text-slate-400" /></button>
-                        <button className="p-2 bg-indigo-50 text-indigo-600 rounded-lg transition-colors"><BarChart2 size={18} /></button>
+                      <div className="flex items-center gap-3">
+                         <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                            <p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest opacity-70">Revenue</p>
+                            <p className="text-sm font-black text-emerald-700 leading-none mt-0.5">₹{analytics?.overview?.totalPayments?.toLocaleString()}</p>
+                         </div>
+                         <div className="px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-xl">
+                            <p className="text-[8px] font-black text-indigo-600 uppercase tracking-widest opacity-70">Paid</p>
+                            <p className="text-sm font-black text-indigo-700 leading-none mt-0.5">{Math.round(((analytics?.overview?.completedPaymentsCount || 0) / (analytics?.overview?.totalAccepted || 1)) * 100)}%</p>
+                         </div>
                       </div>
                     </div>
-                    <div className="h-[300px] w-full mt-4">
+
+                    <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={analytics?.tracks || []}>
+                          <defs>
+                             <linearGradient id="colorTrackBar" x1="0" y1="0" x2="0" y2="1">
+                               <stop offset="5%" stopColor="#6366f1" stopOpacity={1} />
+                               <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.9} />
+                             </linearGradient>
+                           </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="_id" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+                          <XAxis 
+                             dataKey="_id" 
+                             axisLine={false} 
+                             tickLine={false} 
+                             tick={{ fontSize: 9, fontWeight: 800, fill: '#94a3b8' }} 
+                             dy={10}
+                             tickFormatter={(val) => val.length > 10 ? val.substring(0, 10) + '...' : val}
+                          />
                           <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
                           <Tooltip
-                            cursor={{ fill: '#f8fafc' }}
+                            cursor={{ fill: '#f8fafc', radius: 8 }}
                             contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontWeight: 800, fontSize: '12px' }}
                           />
-                          <Bar dataKey="count" fill="#6366f1" radius={[8, 8, 8, 8]} barSize={40} />
+                          <Bar dataKey="count" fill="url(#colorTrackBar)" radius={[8, 8, 8, 8]} barSize={36} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
@@ -720,141 +757,153 @@ const AdminDashboard = () => {
                 className="max-w-7xl mx-auto"
               >
                 {/* Search and Filters Strip */}
-                <div className="flex flex-col md:flex-row gap-6 mb-10">
+                <div className="flex flex-col xl:flex-row gap-6 mb-10 w-full">
                   <div className="relative flex-1 group">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
                     <input
                       type="text"
                       placeholder="Search papers, authors, or IDs..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full pl-12 pr-6 py-4 bg-white rounded-2xl border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 font-bold text-sm text-slate-700 transition-all shadow-sm"
+                      className="w-full pl-14 pr-6 py-5 bg-white rounded-[1.5rem] border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-8 focus:ring-indigo-500/5 font-bold text-sm text-slate-700 transition-all shadow-sm"
                     />
                   </div>
-                  <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-                    {['All', 'Submitted', 'Under Review', 'Accepted', 'Rejected'].map(t => (
-                      <button
-                        key={t}
-                        onClick={() => setFilter(t)}
-                        className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border ${filter === t
-                          ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
-                          : 'bg-white border-slate-200 text-slate-400 hover:border-slate-400'
-                          }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex-shrink-0">
+                  
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 px-1 custom-scrollbar scroll-smooth">
+                      {['All', 'Submitted', 'Under Review', 'Accepted', 'Rejected'].map(t => (
+                        <button
+                          key={t}
+                          onClick={() => setFilter(t)}
+                          className={`px-5 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border shadow-sm ${filter === t
+                            ? 'bg-slate-900 border-slate-900 text-white shadow-indigo-200/50 scale-105 z-10'
+                            : 'bg-white border-slate-200 text-slate-400 hover:border-slate-400'
+                            }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                    
                     <button
                       onClick={handleAutoAssign}
                       disabled={autoAssigning}
-                      className={`h-full flex items-center gap-3 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm ${autoAssigning
+                      className={`flex items-center justify-center gap-3 px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm shrink-0 ${autoAssigning
                           ? 'bg-slate-100 text-slate-400 border-slate-100'
-                          : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100'
+                          : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 hover:-translate-y-0.5 shadow-lg shadow-indigo-100'
                         }`}
                     >
                       <ShieldCheck size={18} className={autoAssigning ? 'animate-pulse' : ''} />
-                      {autoAssigning ? 'Syncing...' : 'Sync Unassigned Papers'}
+                      {autoAssigning ? 'Syncing...' : 'Sync Reviewers'}
                     </button>
                   </div>
                 </div>
 
-                {/* Submissions Table/List View */}
+                {/* Submissions View */}
                 <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="overflow-x-auto custom-scrollbar">
+                  {/* Desktop Table View */}
+                  <div className="hidden lg:block overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-slate-50/50 border-b border-slate-100">
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Primary Author</th>
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Research Title</th>
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Track</th>
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Reviewer</th>
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Attendance</th>
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                          <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                        <tr className="bg-slate-50 border-b border-slate-100 uppercase tracking-[0.15em] text-[10px] font-black text-slate-400">
+                          <th className="px-6 py-5">Author & ID</th>
+                          <th className="px-6 py-5">Manuscript Title</th>
+                          <th className="px-6 py-5">Domain</th>
+                          <th className="px-6 py-5">Reviewer</th>
+                          <th className="px-6 py-5">Attendance</th>
+                          <th className="px-6 py-5">Status</th>
+                          <th className="px-6 py-5 text-right">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredData.map((reg, idx) => (
-                          <tr key={reg._id} className="group hover:bg-slate-50/50 transition-colors">
-                            <td className="px-8 py-6">
+                      <tbody className="divide-y divide-slate-50">
+                        {filteredData.map((reg) => (
+                          <tr key={reg._id} className="group hover:bg-slate-50/50 transition-all duration-200">
+                            <td className="px-6 py-5">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
                                   {(reg.personalDetails?.name || reg.userId?.name)?.charAt(0)}
                                 </div>
                                 <div>
-                                  <p className="text-sm font-black text-slate-800 leading-none">{reg.personalDetails?.name || reg.userId?.name}</p>
-                                  <p className="text-[10px] font-semibold text-slate-400 mt-1">{reg.userId?.email}</p>
-                                  <p className="text-[10px] font-bold text-indigo-600 mt-0.5 tracking-wider font-mono">
-                                    {reg.authorId || `#CMP-26-${reg._id.slice(-6).toUpperCase()}`}
-                                  </p>
+                                  <p className="text-sm font-black text-slate-800 leading-none mb-1">{reg.personalDetails?.name || reg.userId?.name}</p>
+                                  <div className="flex flex-col gap-1 font-mono">
+                                    <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50/50 px-1.5 py-0.5 rounded border border-indigo-100/50 w-max">
+                                      {reg.userId?.delegateId || 'NO_USER_ID'}
+                                    </span>
+                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 w-max">
+                                      {reg.paperId || (reg.personalDetails?.authorId || `#PAPER-${reg._id.slice(-6).toUpperCase()}`)}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-8 py-6">
-                              <p className="text-sm font-bold text-slate-700 max-w-[300px] leading-snug group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => setSelectedReg(reg)}>
+                            <td className="px-6 py-5">
+                              <p className="text-sm font-bold text-slate-700 max-w-[240px] truncate leading-snug group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => setSelectedReg(reg)}>
                                 {reg.paperDetails?.title || 'Untitled Submission'}
                               </p>
                             </td>
-                            <td className="px-8 py-6">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded-md">
-                                {reg.paperDetails?.track?.substring(0, 15)}...
+                            <td className="px-6 py-5">
+                              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm inline-block">
+                                {reg.paperDetails?.track || 'General'}
                               </span>
                             </td>
-                            <td className="px-8 py-6">
-                               <select 
-                                 className="w-full max-w-[150px] bg-slate-50 border-none rounded-lg py-1 px-2 text-[10px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
-                                 value={reg.paperDetails?.assignedReviewer?._id || ''}
-                                 onChange={(e) => handleAssignReviewer(reg._id, e.target.value)}
-                                 disabled={assigningReviewer}
-                               >
-                                 <option value="">{reg.paperDetails?.assignedReviewer ? 'Unassign Reviewer' : 'Assign Reviewer...'}</option>
-                                 {reviewers.map(rev => (
-                                   <option key={rev._id} value={rev._id}>
-                                     {rev.name}
-                                   </option>
-                                 ))}
-                               </select>
+                            <td className="px-6 py-5">
+                               <div className="relative group/sel">
+                                 <select 
+                                   className="w-full max-w-[160px] bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-[10px] font-black text-slate-600 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none disabled:opacity-50 transition-all appearance-none cursor-pointer"
+                                   value={reg.paperDetails?.assignedReviewer?._id || ''}
+                                   onChange={(e) => handleAssignReviewer(reg._id, e.target.value)}
+                                   disabled={assigningReviewer}
+                                 >
+                                   <option value="">{reg.paperDetails?.assignedReviewer ? 'Unassign' : 'Assign Reviewer'}</option>
+                                   {reviewers.map(rev => (
+                                     <option key={rev._id} value={rev._id}>{rev.name}</option>
+                                   ))}
+                                 </select>
+                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover/sel:text-indigo-500 transition-colors">
+                                   <ChevronRight size={14} className="rotate-90" />
+                                 </div>
+                               </div>
                             </td>
-                            <td className="px-8 py-6">
+                            <td className="px-6 py-5">
                               <div className="flex items-center gap-2">
                                 {reg.attended ? (
-                                  <span className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 uppercase tracking-tighter">
-                                    <CheckCircle size={14} /> Present
-                                  </span>
+                                  <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-100">
+                                    <CheckCircle size={12} strokeWidth={3} /> Present
+                                  </div>
                                 ) : (
-                                  <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-300 uppercase tracking-tighter">
-                                    <X size={14} /> Absent
-                                  </span>
+                                  <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 text-slate-300 rounded-lg text-[9px] font-black uppercase tracking-widest border border-slate-100">
+                                    <X size={12} strokeWidth={3} /> Absent
+                                  </div>
                                 )}
                               </div>
                             </td>
-                            <td className="px-8 py-6">
-                              <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-[0.15em] inline-block shadow-sm ${reg.status === 'Accepted' ? 'bg-blue-100 text-blue-700' :
-                                reg.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                  reg.status === 'Under Review' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                    (reg.status === 'Submitted' && !reg.paperDetails?.fileUrl) ? 'bg-slate-100 text-slate-600 border-slate-200' :
-                                      'bg-indigo-50 text-indigo-600'
-                                }`}>
-                                {reg.status === 'Submitted' && !reg.paperDetails?.fileUrl ? 'Pending Upload' : reg.status}
+                            <td className="px-6 py-5">
+                              <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] inline-block shadow-sm border ${
+                                reg.status === 'Accepted' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                reg.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                                reg.status === 'Under Review' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                                (reg.status === 'Submitted' && !reg.paperDetails?.fileUrl) ? 'bg-slate-50 text-slate-400 border-slate-100' :
+                                'bg-blue-50 text-blue-600 border-blue-100'
+                              }`}>
+                                {reg.status === 'Submitted' && !reg.paperDetails?.fileUrl ? 'Draft' : reg.status}
                               </span>
                             </td>
-                            <td className="px-8 py-6 text-right">
-                              <div className="flex items-center justify-end gap-2">
+                            <td className="px-6 py-5 text-right">
+                              <div className="flex items-center justify-end gap-2.5">
                                 {reg.paperDetails?.fileUrl && (
                                   <a
                                     href={`/api/registrations/download/${reg._id}?token=${user.token}`}
-                                    target="_blank" rel="noreferrer"
-                                    className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                    className="p-2.5 rounded-xl bg-slate-100 text-slate-500 hover:text-white hover:bg-indigo-600 transition-all shadow-sm"
                                     title="Download File"
+                                    download={reg.authorId || `CIETM-${reg._id.slice(-6).toUpperCase()}`}
+                                    onClick={() => reg.status === 'Submitted' && setTimeout(fetchAllData, 2000)}
                                   >
                                     <Download size={16} />
                                   </a>
                                 )}
                                 <button
                                   onClick={() => setSelectedReg(reg)}
-                                  className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all font-bold text-[10px] px-3 uppercase tracking-tighter"
+                                  className="px-5 py-2.5 rounded-xl bg-slate-900 text-white hover:scale-105 active:scale-95 transition-all font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-200"
                                 >
                                   Inspect
                                 </button>
@@ -864,14 +913,88 @@ const AdminDashboard = () => {
                         ))}
                       </tbody>
                     </table>
-                    {filteredData.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-20 bg-slate-50/30">
-                        <AlertCircle size={40} className="text-slate-200 mb-4" />
-                        <p className="text-slate-400 font-bold text-sm tracking-tight uppercase">No matching registrations found</p>
-                        <button onClick={() => { setSearch(''); setFilter('All') }} className="mt-4 text-xs font-black text-indigo-600 hover:underline uppercase tracking-widest">Reset Filters</button>
-                      </div>
-                    )}
                   </div>
+
+                  {/* Mobile Card Layout */}
+                  <div className="lg:hidden divide-y divide-slate-100">
+                    {filteredData.map((reg) => (
+                      <div key={reg._id} className="p-6 space-y-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-lg shadow-indigo-100">
+                              {(reg.personalDetails?.name || reg.userId?.name)?.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-black text-slate-800 leading-none mb-1">{reg.personalDetails?.name || reg.userId?.name}</p>
+                              <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest font-mono bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                                {reg.authorId || `#CMP-26-${reg._id.slice(-6).toUpperCase()}`}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border shadow-sm ${
+                            reg.status === 'Accepted' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                            reg.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' :
+                            reg.status === 'Under Review' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                            'bg-blue-50 text-blue-600 border-blue-100'
+                          }`}>
+                            {reg.status}
+                          </span>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 opacity-70">Research Title</p>
+                          <p className="text-sm font-black text-slate-800 line-clamp-2 leading-tight">
+                            {reg.paperDetails?.title || 'No Title Provided'}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Domain</p>
+                            <p className="text-[10px] font-black text-slate-600 truncate">{reg.paperDetails?.track || 'General'}</p>
+                          </div>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance</p>
+                            <div className="flex items-center gap-1.5">
+                              {reg.attended ? (
+                                <span className="text-[10px] font-black text-emerald-600 uppercase">Present</span>
+                               ) : (
+                                <span className="text-[10px] font-black text-slate-300 uppercase">Absent</span>
+                               )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                           <button onClick={() => setSelectedReg(reg)} className="flex-1 py-3.5 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-200 active:scale-95 transition-all">
+                             Manage Manuscript
+                           </button>
+                           {reg.paperDetails?.fileUrl && (
+                             <a 
+                               href={`/api/registrations/download/${reg._id}?token=${user.token}`}
+                               className="w-14 h-14 flex items-center justify-center bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-2xl shadow-sm"
+                               download={reg.paperId || (reg.personalDetails?.authorId || `PAPER-${reg._id.slice(-6).toUpperCase()}`)}
+                             >
+                               <Download size={20} />
+                             </a>
+                           )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {filteredData.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                      <div className="w-20 h-20 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mb-6 border border-slate-100 shadow-inner">
+                        <AlertCircle size={40} className="text-slate-200" />
+                      </div>
+                      <h4 className="text-lg font-black text-slate-800 mb-1">No Manuscripts Found</h4>
+                      <p className="text-sm font-bold text-slate-400 max-w-xs mb-8">We couldn't find any submissions matching your current filters.</p>
+                      <button onClick={() => { setSearch(''); setFilter('All') }} className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:shadow-xl hover:shadow-indigo-200 transition-all">
+                        Reset Filters
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -944,11 +1067,14 @@ const AdminDashboard = () => {
                                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${u.role === 'admin' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 text-slate-500'}`}>
                                   {u.name?.charAt(0)}
                                 </div>
-                                <div>
-                                  <p className="text-sm font-black text-slate-800 leading-none">{u.name}</p>
-                                  <p className="text-[10px] font-bold text-indigo-600 mt-1 uppercase tracking-tighter font-mono">
-                                    {registrations.find(r => (r.userId?._id || r.userId) === u._id)?.authorId || `#USR-${u._id.slice(-6).toUpperCase()}`}
-                                  </p>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-black text-slate-800 leading-none mb-1">{u.name}</p>
+                                  <div className="flex items-center gap-2">
+                                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Delegate ID:</span>
+                                     <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-tighter font-mono leading-none">
+                                       {u.delegateId || `#USR-${u._id.slice(-6).toUpperCase()}`}
+                                     </p>
+                                  </div>
                                 </div>
                               </div>
                             </td>
@@ -1158,10 +1284,40 @@ const AdminDashboard = () => {
                           </div>
                         </div>
 
+                        {scannedResult.otherPapers && scannedResult.otherPapers.length > 0 && (
+                          <div className="mt-8 space-y-4">
+                            <div className="flex items-center gap-3 px-1">
+                              <h5 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Other Manuscripts ({scannedResult.otherPapers.length})</h5>
+                              <div className="h-px bg-slate-100 flex-1"></div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3">
+                              {scannedResult.otherPapers.map((paper, idx) => (
+                                <div key={idx} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between group hover:border-indigo-200 transition-all">
+                                  <div className="min-w-0 pr-4">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{paper.paperId || 'N/A'}</p>
+                                    <p className="text-xs font-bold text-slate-700 truncate" title={paper.paperDetails?.title}>{paper.paperDetails?.title || 'No Title'}</p>
+                                  </div>
+                                  <div className="shrink-0 flex flex-col items-end gap-1.5">
+                                    <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tighter ${
+                                      paper.status === 'Accepted' ? 'bg-emerald-100 text-emerald-700' : 
+                                      paper.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                                    }`}>
+                                      {paper.status}
+                                    </span>
+                                    <span className={`text-[8px] font-bold uppercase tracking-tight ${paper.paymentStatus === 'Completed' ? 'text-blue-600' : 'text-slate-400'}`}>
+                                      {paper.paymentStatus === 'Completed' ? 'Paid' : 'Unpaid'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {scannedResult.paymentStatus !== 'Completed' ? (
                           <div className="mt-8 p-4 bg-red-50 rounded-2xl border border-red-100 flex items-center gap-3">
                             <AlertCircle className="text-red-600" size={20} />
-                            <p className="text-xs font-bold text-red-600">Entry Restricted: Payment is {scannedResult.paymentStatus.toLowerCase()}.</p>
+                            <p className="text-xs font-bold text-red-600">Entry Restricted: Payment is {(scannedResult.paymentStatus || 'Pending').toLowerCase()}.</p>
                           </div>
                         ) : (
                           <div className="mt-8 p-6 bg-blue-600 rounded-3xl text-white shadow-xl shadow-blue-100 flex flex-col items-center justify-center gap-2">
@@ -1186,54 +1342,7 @@ const AdminDashboard = () => {
               </motion.div>
             )}
 
-            {activeTab === 'updates' && (
-              <motion.div
-                key="updates"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="max-w-4xl mx-auto space-y-6"
-              >
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <h2 className="text-2xl font-black text-slate-800">Pending Updates</h2>
-                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Re-upload requests from authors</p>
-                  </div>
-                  <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                    <Bell size={24} />
-                  </div>
-                </div>
 
-                {registrations.filter(r => r.paperDetails?.reuploadRequestStatus === 'Pending').length === 0 ? (
-                  <div className="bg-white rounded-[2rem] border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
-                     <div className="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-4">
-                       <CheckCircle size={32} />
-                     </div>
-                     <h3 className="text-lg font-black text-slate-700">All caught up!</h3>
-                     <p className="text-sm font-bold text-slate-400 mt-2">There are no pending re-upload requests.</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4">
-                    {registrations.filter(r => r.paperDetails?.reuploadRequestStatus === 'Pending').map(reg => (
-                      <div key={reg._id} className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col sm:flex-row justify-between shrink-0 gap-4">
-                        <div>
-                           <div className="flex items-center gap-2 mb-2">
-                             <span className="px-2 py-1 bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-widest rounded-md border border-red-100">Rejected</span>
-                             <span className="text-xs font-bold text-slate-400">ID: ...{reg._id.slice(-6).toUpperCase()}</span>
-                           </div>
-                           <h4 className="text-lg font-black text-slate-800 leading-tight mb-1">{reg.paperDetails?.title || 'Untitled'}</h4>
-                           <p className="text-sm font-bold text-slate-500">Author: {reg.personalDetails?.name}</p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row items-center gap-3">
-                           <button onClick={() => handleReuploadAction(reg._id, 'Reject')} className="w-full sm:w-auto px-6 py-3 bg-slate-50 hover:bg-red-50 text-slate-600 hover:text-red-600 font-bold text-xs uppercase tracking-widest rounded-xl transition-colors border border-slate-200">Deny</button>
-                           <button onClick={() => handleReuploadAction(reg._id, 'Approve')} className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-indigo-100 transition-colors">Approve Request</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
 
             {activeTab === 'analytics' && analytics && (
               <motion.div
@@ -1499,13 +1608,47 @@ const AdminDashboard = () => {
                         ></textarea>
                       </div>
 
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-3">Target Audience</label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { id: 'author', label: 'Authors' },
+                            { id: 'chair', label: 'Chairs' },
+                            { id: 'reviewer', label: 'Reviewers' }
+                          ].map(role => (
+                            <button
+                              key={role.id}
+                              type="button"
+                              onClick={() => {
+                                const newRoles = broadcast.roles.includes(role.id)
+                                  ? broadcast.roles.filter(r => r !== role.id)
+                                  : [...broadcast.roles, role.id];
+                                setBroadcast({ ...broadcast, roles: newRoles });
+                              }}
+                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${broadcast.roles.includes(role.id)
+                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                  : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200'
+                                }`}
+                            >
+                              {broadcast.roles.includes(role.id) ? <CheckSquare size={14} /> : <Square size={14} />}
+                              {role.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
                       <div className="flex gap-4">
                         {['info', 'success', 'warning', 'error'].map(t => (
                           <button
                             key={t}
                             type="button"
                             onClick={() => setBroadcast({ ...broadcast, type: t })}
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${broadcast.type === t ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${broadcast.type === t
+                                ? (t === 'info' ? 'bg-slate-900 border-slate-900 text-white' :
+                                  t === 'success' ? 'bg-emerald-600 border-emerald-600 text-white' :
+                                    t === 'warning' ? 'bg-amber-500 border-amber-500 text-white' :
+                                      'bg-red-600 border-red-600 text-white')
+                                : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-100'
                               }`}
                           >
                             {t}
@@ -1513,8 +1656,11 @@ const AdminDashboard = () => {
                         ))}
                       </div>
 
-                      <button className="w-full py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-amber-100 hover:-translate-y-1 transition-all">
-                        Push to All Authors
+                      <button className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
+                        <Bell size={16} />
+                        Push to {broadcast.roles.length === 3 ? 'Entire Platform' :
+                          broadcast.roles.length === 0 ? 'Selection' :
+                            broadcast.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1) + 's').join(' & ')}
                       </button>
                     </form>
                   </div>
@@ -1643,75 +1789,98 @@ const AdminDashboard = () => {
               initial={{ scale: 0.9, opacity: 0, y: 50 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 50 }}
-              className="relative w-full md:w-[95vw] lg:w-full max-w-6xl bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl flex flex-col md:flex-row h-[90vh] md:h-[85vh] overflow-hidden overflow-y-auto md:overflow-y-hidden"
+              className="relative w-full md:w-[95vw] lg:w-full max-w-6xl bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl flex flex-col md:flex-row h-[95vh] md:h-[85vh] overflow-y-auto md:overflow-hidden"
             >
-              {/* Modal Sidebar - Summary */}
-              <div className="w-full md:w-80 bg-slate-50 border-r border-slate-100 p-6 md:p-10 flex flex-col shrink-0">
-                <div className="flex md:flex-col items-center gap-4 md:gap-0">
-                  <div className="w-16 h-16 md:w-20 md:h-20 bg-indigo-600 rounded-2xl md:rounded-3xl flex items-center justify-center text-white text-2xl md:text-3xl font-black shadow-xl shadow-indigo-200 shrink-0">
+              {/* Universal Close Button */}
+              <button 
+                onClick={() => setSelectedReg(null)} 
+                className="absolute top-6 right-6 md:top-8 md:right-10 z-[60] p-3 bg-white/60 backdrop-blur-xl border border-slate-200 text-slate-400 rounded-2xl hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all active:scale-90 shadow-lg shadow-slate-200/50"
+              >
+                <X size={24} strokeWidth={3} />
+              </button>
+              {/* Modal Sidebar - Profile & Top Stats */}
+              <div className="w-full md:w-80 bg-slate-50/50 border-r border-slate-100 p-8 md:p-10 flex flex-col shrink-0 md:overflow-y-auto custom-scrollbar">
+                <div className="flex flex-row md:flex-col items-center gap-6 md:gap-0 mb-8 md:mb-0">
+                  <div className="w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center text-white text-2xl md:text-4xl font-black shadow-xl shadow-indigo-200 shrink-0">
+                    {(selectedReg.personalDetails?.name || selectedReg.userId?.name)?.charAt(0)}
                   </div>
-                  <div className="text-left md:text-left md:mb-8 md:mt-6 overflow-hidden max-w-full">
-                    <h2 className="text-lg md:text-xl font-black text-slate-800 leading-tight truncate">{selectedReg.personalDetails?.name || selectedReg.userId?.name}</h2>
-                    <p className="text-xs font-bold text-slate-400 mt-1 md:mt-2 uppercase tracking-widest truncate">{selectedReg.userId?.email}</p>
+                  <div className="text-left md:text-center md:mb-8 md:mt-6 flex-1 min-w-0">
+                    <h2 className="text-lg md:text-2xl font-black text-slate-800 leading-tight truncate">{selectedReg.personalDetails?.name || selectedReg.userId?.name}</h2>
+                    <p className="text-[10px] md:text-[11px] font-black text-slate-400 mt-1 md:mt-2 uppercase tracking-widest truncate">{selectedReg.userId?.email}</p>
                   </div>
                 </div>
 
-                <div className="space-y-3 mb-6 md:mb-10 mt-6 md:mt-0">
-                  <div className="flex justify-between items-center px-4 py-3 bg-white rounded-2xl border border-slate-200">
-                    <span className="text-[9px] font-black text-slate-400 uppercase group-hover:block tracking-widest">ID</span>
-                    <span className="text-[10px] font-mono font-bold text-slate-800">
-                      {selectedReg.authorId || `...${selectedReg._id.slice(-6)}`}
-                    </span>
+                <div className="space-y-4 mb-4 md:mb-10">
+                  <div className="flex flex-col gap-2 p-5 bg-white rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:border-indigo-100">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Delegate ID</span>
+                      <span className="text-[10px] font-mono font-black text-indigo-600 group-hover:text-indigo-700">{selectedReg.userId?.delegateId || 'N/A'}</span>
+                    </div>
+                    <div className="h-[1px] bg-slate-100 w-full"></div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Paper ID</span>
+                      <span className="text-[10px] font-mono font-black text-slate-700">{selectedReg.paperId || 'N/A'}</span>
+                    </div>
                   </div>
-                  <div className={`flex justify-between items-center px-4 py-3 rounded-2xl border ${selectedReg.status === 'Accepted' ? 'bg-blue-50 border-blue-100 text-blue-600' : 'bg-amber-50 border-amber-100 text-amber-600'
-                    }`}>
-                    <span className="text-[9px] font-black uppercase tracking-widest">Status</span>
+                  
+                  <div className={`flex justify-between items-center px-5 py-4 rounded-2xl border shadow-sm transition-all ${
+                    selectedReg.status === 'Accepted' ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 
+                    selectedReg.status === 'Rejected' ? 'bg-red-50 border-red-100 text-red-600' :
+                    'bg-amber-50 border-amber-100 text-amber-600'
+                  }`}>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Manuscript</span>
                     <span className="text-[10px] font-black uppercase tracking-widest">
-                      {selectedReg.status === 'Submitted' && !selectedReg.paperDetails?.fileUrl ? 'Pending Upload' : selectedReg.status}
+                      {selectedReg.status}
                     </span>
                   </div>
-                  <div className={`flex justify-between items-center px-4 py-3 rounded-2xl border ${selectedReg.paymentStatus === 'Completed' ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-100 border-slate-200 text-slate-400'
-                    }`}>
-                    <span className="text-[9px] font-black uppercase tracking-widest">Payment</span>
+
+                  <div className={`flex justify-between items-center px-5 py-4 rounded-2xl border shadow-sm transition-all ${
+                    selectedReg.paymentStatus === 'Completed' ? 'bg-blue-50 border-blue-100 text-blue-600' : 
+                    'bg-amber-50/50 border-amber-100 text-amber-600'
+                  }`}>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Finance</span>
                     <span className="text-[10px] font-black uppercase tracking-widest">{selectedReg.paymentStatus}</span>
                   </div>
                 </div>
 
-                <div className="mt-auto space-y-3">
+                <div className="hidden md:flex flex-col gap-3 mt-auto">
                   {selectedReg.status !== 'Accepted' && (
                     <button
                       onClick={() => handleReview(selectedReg._id, 'Accepted')}
                       disabled={!selectedReg.paperDetails?.fileUrl}
-                      className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-1 ${!selectedReg.paperDetails?.fileUrl
-                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200'
+                      className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 ${!selectedReg.paperDetails?.fileUrl
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-100'
+                        : 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
                         }`}
                     >
-                      {!selectedReg.paperDetails?.fileUrl ? 'No Manuscript' : 'Approve Submission'}
+                      {!selectedReg.paperDetails?.fileUrl ? 'Awaiting Upload' : 'Approve Decision'}
                     </button>
                   )}
                   {selectedReg.status !== 'Rejected' && (
                     <button
                       onClick={() => handleReview(selectedReg._id, 'Rejected')}
-                      className="w-full py-4 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+                      className="w-full py-4 bg-white border border-red-100 text-red-500 hover:bg-red-50 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
                     >
-                      Decline Submission
+                      Reject Submission
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Modal Main Content Area */}
-              <div className="flex-1 flex flex-col min-w-0 h-full">
-                <div className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar">
-                  <div className="flex justify-between items-start mb-10 gap-4">
-                    <div className="flex-1">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Research Title</p>
-                      <h1 className="text-xl md:text-2xl font-black text-slate-800 leading-tight block">{selectedReg.paperDetails?.title || 'No Title Provided'}</h1>
+              <div className="flex-1 flex flex-col min-w-0 h-full bg-white">
+                <div className="flex-1 md:overflow-y-auto p-6 md:p-12 custom-scrollbar">
+                  <div className="flex justify-between items-start mb-8 md:mb-12 gap-6">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="px-2 py-0.5 bg-slate-900 text-white text-[8px] font-black uppercase tracking-widest rounded">Research Entry</span>
+                        <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedReg.paperDetails?.track || 'General Domain'}</span>
+                      </div>
+                      <h1 className="text-xl md:text-3xl font-black text-slate-800 leading-[1.15] break-words pr-12 md:pr-0">
+                        {selectedReg.paperDetails?.title || 'No Title Provided'}
+                      </h1>
                     </div>
-                    <button onClick={() => setSelectedReg(null)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all shrink-0">
-                      <XCircle size={24} />
-                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
@@ -1791,23 +1960,33 @@ const AdminDashboard = () => {
                   </div>
 
                   {selectedReg.teamMembers && selectedReg.teamMembers.length > 0 && (
-                    <div className="mt-12">
-                      <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-6 border-b border-slate-100 pb-3">Co-Authors ({selectedReg.teamMembers.length})</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="mt-12 md:mt-20">
+                      <div className="flex items-center gap-4 mb-8">
+                        <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em] whitespace-nowrap">Collaborating Authors</h4>
+                        <div className="h-px bg-slate-100 flex-1"></div>
+                        <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg">{selectedReg.teamMembers.length} Person(s)</span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                         {selectedReg.teamMembers.map((member, i) => (
-                          <div key={i} className="p-5 border border-slate-200 rounded-3xl bg-white shadow-sm hover:border-indigo-200 transition-all group">
-                            <div className="flex items-center gap-3 mb-4">
-                              <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-100 text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 flex items-center justify-center font-bold text-xs transition-colors">
+                          <div key={i} className="p-6 border border-slate-100 rounded-[2rem] bg-white shadow-sm hover:shadow-xl hover:shadow-indigo-50/50 hover:border-indigo-100 transition-all group">
+                            <div className="flex items-center gap-4 mb-5">
+                              <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center font-black text-sm transition-all shadow-inner">
                                 {member.name?.charAt(0)}
                               </div>
                               <div>
-                                <p className="text-xs font-black text-slate-800">{member.name}</p>
-                                <p className="text-[10px] font-bold text-slate-400 group-hover:text-indigo-600 uppercase tracking-tighter transition-colors">{member.category}</p>
+                                <p className="text-sm font-black text-slate-800 group-hover:text-indigo-600 transition-colors">{member.name}</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{member.category}</p>
                               </div>
                             </div>
-                            <div className="space-y-2 text-[10px] font-bold text-slate-500">
-                              <p className="flex items-center gap-2"><Mail size={12} className="opacity-50" /> {member.email}</p>
-                              <p className="flex items-center gap-2 truncate" title={member.affiliation}><Shield size={12} className="opacity-50" /> {member.affiliation}</p>
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                                <Mail size={14} className="text-slate-400" />
+                                <p className="text-[11px] font-bold text-slate-600 truncate">{member.email}</p>
+                              </div>
+                              <div className="flex items-center gap-3 p-3 bg-slate-50/50 rounded-xl border border-slate-100/50">
+                                <Shield size={14} className="text-slate-400" />
+                                <p className="text-[11px] font-bold text-slate-600 truncate" title={member.affiliation}>{member.affiliation}</p>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -1825,44 +2004,43 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Modal Actions Footer */}
-                <div className="bg-white/90 backdrop-blur-xl border-t border-slate-100 p-6 md:p-8 flex flex-col lg:flex-row items-center justify-between gap-4 md:gap-6 z-20 shrink-0">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-6 w-full lg:w-auto">
+                <div className="bg-white/80 backdrop-blur-2xl border-t border-slate-100 p-6 md:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 z-20 shrink-0 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full lg:w-auto">
                     {selectedReg.paymentStatus === 'Completed' ? (
-                      <div className="px-4 md:px-5 py-3 rounded-2xl border transition-all flex-1 sm:flex-none bg-blue-50 border-blue-100">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment Verification</p>
+                      <div className="px-5 py-3 rounded-2xl transition-all flex-1 sm:flex-none bg-blue-50 border border-blue-100 flex flex-col">
+                        <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Payment Verified</p>
                         <p className="text-sm font-black flex items-center gap-2 text-blue-700">
                           <CheckCircle size={16} /> Completed
                         </p>
                       </div>
                     ) : (
-                      <div className="px-4 md:px-5 py-3 rounded-2xl border transition-all flex-1 sm:flex-none bg-amber-50 border-amber-200 shadow-inner flex flex-col gap-2 relative">
-                        <div className="flex justify-between items-center mr-1">
-                          <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Manual Payment Collection</p>
-                          <span className="text-[10px] font-black text-amber-700">₹{calculateRequiredFee(selectedReg)} Required</span>
+                      <div className="px-5 py-3 rounded-2xl border-2 border-amber-100 transition-all flex-1 sm:flex-none bg-amber-50/30 flex flex-col gap-2 relative group hover:border-amber-400">
+                        <div className="flex justify-between items-center gap-4">
+                          <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Manual Collection</p>
+                          <span className="text-[11px] font-black text-amber-700">₹{calculateRequiredFee(selectedReg)}</span>
                         </div>
 
                         {selectedReg.status !== 'Accepted' ? (
-                          <div className="flex items-center gap-2 text-amber-600">
-                            <AlertCircle size={14} />
+                          <div className="flex items-center gap-2 text-amber-600/60 pb-1">
+                            <AlertCircle size={12} />
                             <span className="text-[9px] font-bold uppercase tracking-tight">
-                              {selectedReg.status === 'Draft' ? "Submission Incomplete" : "Manuscript Not Accepted"}
+                              Needs Acceptance First
                             </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
                             <input
                               type="number"
-                              placeholder="₹ Amount"
-                              min="1"
+                              placeholder="Amount"
                               value={manualPaymentAmount || calculateRequiredFee(selectedReg)}
                               onChange={(e) => setManualPaymentAmount(e.target.value)}
-                              className="w-24 bg-white border border-amber-200 rounded-lg p-2 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                              className="w-24 bg-white border border-amber-200 rounded-lg p-2 text-sm font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-500/10"
                             />
                             <button
                               onClick={() => handleManualPaymentConfirm(selectedReg)}
-                              className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg font-bold text-xs shadow-md transition-colors whitespace-nowrap"
+                              className="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest shadow-lg shadow-amber-200 transition-all active:scale-95"
                             >
-                              Confirm & Verify
+                              Verify
                             </button>
                           </div>
                         )}
@@ -1872,11 +2050,11 @@ const AdminDashboard = () => {
                     {selectedReg.paymentStatus === 'Completed' && (
                       <button
                         onClick={() => handleToggleAttendance(selectedReg)}
-                        className={`px-4 md:px-5 py-3 rounded-2xl border transition-all flex-1 sm:flex-none flex flex-col justify-center sm:items-start ${selectedReg.attended ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-200'}`}
+                        className={`px-5 py-3 rounded-2xl border transition-all flex-1 sm:flex-none flex flex-col justify-center text-left ${selectedReg.attended ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}`}
                       >
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">On-site Attendance</p>
-                        <span className={`text-sm font-black flex items-center gap-2 ${selectedReg.attended ? 'text-indigo-700' : 'text-slate-400'}`}>
-                          {selectedReg.attended ? <CheckCircle size={16} /> : <div className="w-4 h-4 rounded-full border-2 border-slate-300"></div>}
+                        <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${selectedReg.attended ? 'text-indigo-200' : 'text-slate-400'}`}>On-site Attendance</p>
+                        <span className="text-sm font-black flex items-center gap-2">
+                          {selectedReg.attended ? <Users size={16} /> : <ScanLine size={16} />}
                           {selectedReg.attended ? 'Marked Present' : 'Mark Absent'}
                         </span>
                       </button>
@@ -1886,8 +2064,8 @@ const AdminDashboard = () => {
                   <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
                     {!selectedReg.paperDetails?.fileUrl ? (
                       <div className="flex items-center justify-center p-4 bg-slate-50 border border-slate-200 rounded-2xl w-full">
-                        <p className="text-xs font-bold text-slate-500 text-center uppercase tracking-widest">
-                          Pending Manuscript Upload
+                        <p className="text-xs font-bold text-slate-400 text-center uppercase tracking-widest italic">
+                          Awaiting Manuscript Upload...
                         </p>
                       </div>
                     ) : (
@@ -1895,15 +2073,15 @@ const AdminDashboard = () => {
                         {selectedReg.status !== 'Accepted' && (
                           <button
                             onClick={() => handleReview(selectedReg._id, 'Accepted')}
-                            className="flex-1 w-full sm:w-auto px-6 md:px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-100"
+                            className="flex-1 w-full sm:w-auto px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-indigo-700 hover:scale-105 transition-all shadow-xl shadow-indigo-200 active:scale-95"
                           >
-                            Accept Manuscript
+                            Accept Paper
                           </button>
                         )}
                         {selectedReg.status !== 'Rejected' && (
                           <button
                             onClick={() => handleReview(selectedReg._id, 'Rejected')}
-                            className="flex-1 w-full sm:w-auto px-6 md:px-8 py-4 bg-white text-red-500 border border-red-100 rounded-2xl font-black text-xs uppercase tracking-[0.15em] hover:bg-red-50 transition-all"
+                            className="flex-1 w-full sm:w-auto px-8 py-4 bg-white text-red-500 border border-red-100 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-red-50 transition-all active:scale-95"
                           >
                             Reject
                           </button>

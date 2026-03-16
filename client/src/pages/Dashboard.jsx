@@ -361,10 +361,10 @@ const Dashboard = () => {
 
   const calculateCurrentFee = (reg) => {
     if (!reg) return 0;
-    let total = categoryAmounts[reg.personalDetails?.category] || 1000;
+    let total = categoryAmounts[reg.personalDetails?.category] || 0;
     if (reg.teamMembers && reg.teamMembers.length > 0) {
       reg.teamMembers.forEach(member => {
-        total += categoryAmounts[member.category] || 1000;
+        total += categoryAmounts[member.category] || 0;
       });
     }
     return total;

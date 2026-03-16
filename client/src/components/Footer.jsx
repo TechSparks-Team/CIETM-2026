@@ -40,8 +40,8 @@ const Footer = () => {
             <Link to="/" className="text-3xl font-black text-slate-900 tracking-tighter mb-2 flex items-center gap-2 group" onClick={() => scrollToSection('#hero')}>
               CIETM <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 p-1">2026</span>
             </Link>
-            <p className="text-slate-500 leading-relaxed mb-10 text-base max-w-sm font-medium text-justify">
-              Join the global dialogue at the prestigious International Conference on Engineering, Technology and Management. 
+            <p className="text-slate-500 leading-relaxed mb-10 text-base max-w-sm font-medium">
+              Join the global dialogue at the prestigious National Conference on Contemporary Innovations in Engineering, Technology and Management. 
               Driving innovation through multidisciplinary excellence.
             </p>
             <div className="flex gap-4 justify-center lg:justify-start">
@@ -69,8 +69,8 @@ const Footer = () => {
                 <li><Link to="/login" className={footerLinkClass}>Author Login</Link></li>
                 <li><Link to="/register" className={footerLinkClass}>Registration</Link></li>
                 <li><Link to="/terms" className={footerLinkClass}>Terms & Conditions</Link></li>
-                <li><a href="#" className={footerLinkClass}>Paper Template</a></li>
-                <li><a href="#" className={footerLinkClass}>Contact Support</a></li>
+                <li><a href="https://www.ieee.org/content/dam/ieee-org/ieee/web/org/conferences/Conference-template-A4.doc" target="_blank" rel="noopener noreferrer" className={footerLinkClass}>Paper Template</a></li>
+                <li><a href="mailto:info@cietcbe.edu.in" className={footerLinkClass}>Contact Support</a></li>
               </ul>
             </div>
           </div>
@@ -113,8 +113,8 @@ const Footer = () => {
       <div className="py-10 bg-slate-900 border-t border-white/5">
         <div className="w-full max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-sm text-slate-400 font-bold tracking-tight">&copy; 2026 National Conference CIETM. All rights reserved.</p>
-          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 text-white text-xs font-black shadow-xl">
-            <Sparkles size={14} className="text-indigo-400" />
+          <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 text-white text-xs font-black shadow-xl hover:bg-white/10 transition-colors cursor-default group">
+            <Sparkles size={14} className="text-indigo-400 group-hover:rotate-12 transition-transform" />
             <span className="uppercase tracking-widest">Innovation Powered</span>
           </div>
         </div>

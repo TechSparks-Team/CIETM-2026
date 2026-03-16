@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { ChevronRight, ChevronLeft, Upload, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { CONFERENCE_TRACKS } from '../constants/conferenceData';
 
 const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess }) => {
@@ -16,6 +16,7 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
   const [errors, setErrors] = useState({});
   const [resendTimer, setResendTimer] = useState(0);
   const navigate = useNavigate();
+  const scrollableRef = React.useRef(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -292,6 +293,9 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
       await handleSaveDraft();
       sessionStorage.setItem('isRegistering', 'true');
       setStep(step + 1);
+      if (scrollableRef.current) {
+        scrollableRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
@@ -335,7 +339,12 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
     }
   };
 
-  const prevStep = () => setStep(step - 1);
+  const prevStep = () => {
+    setStep(step - 1);
+    if (scrollableRef.current) {
+      scrollableRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const handleSkip = async () => {
     // Skip does NOT validate, just saves draft and moves to dashboard
@@ -442,14 +451,17 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
       <div className="mb-8 pt-4 shrink-0">
         <p className="flex justify-between text-sm font-bold text-slate-500 uppercase tracking-wide mb-3">
           <span>Step {step} of 5</span>
-          <span className="text-indigo-600">{Math.round((step / 5) * 100)}% Completed</span>
+          <span className="text-indigo-600">{Math.round(((step - 1) / 4) * 100)}% Completed</span>
         </p>
         <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full transition-all duration-500 ease-out" style={{ width: `${(step / 5) * 100}%` }}></div>
+          <div className="h-full bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full transition-all duration-500 ease-out" style={{ width: `${((step - 1) / 4) * 100}%` }}></div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 mb-4 flex flex-col custom-scrollbar">
+      <div 
+        ref={scrollableRef}
+        className="flex-1 overflow-y-auto pr-2 mb-4 flex flex-col custom-scrollbar"
+      >
         {step === 1 && showAccountCreation && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
             <h2 className="text-2xl font-bold text-slate-900 mb-6 shrink-0">Step 1: Account Creation</h2>
@@ -887,6 +899,16 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
 
       {!showVerification && (
         <div className="flex justify-between mt-auto pt-6 pb-4 border-t border-slate-100 bg-white shrink-0 z-20">
+          {step === 1 && showAccountCreation && (
+            <Link
+              to="/login"
+              className="px-6 py-2.5 rounded-xl font-black text-[0.7rem] uppercase tracking-widest bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors flex items-center gap-2 border-none cursor-pointer"
+            >
+              <span className="hidden sm:inline">Already Registered? Login</span>
+              <span className="sm:hidden">Login</span>
+            </Link>
+          )}
+
           {step > (showAccountCreation ? 1 : 2) && (
             <button
               onClick={prevStep}

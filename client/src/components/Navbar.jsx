@@ -158,16 +158,16 @@ const Navbar = () => {
           </motion.span>
           
           {/* Shine Effect */}
-          <div className="absolute top-0 -left-full w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-35deg] group-hover:left-[200%] transition-all duration-1000 ease-in-out pointer-events-none"></div>
+          <div className="absolute top-0 -left-[150%] w-[150%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-20deg] group-hover:left-[150%] transition-all duration-1000 ease-in-out pointer-events-none"></div>
           
           {/* Bottom underline */}
-          <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-indigo-600 to-purple-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></span>
+          <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-gradient-to-r from-indigo-600 to-purple-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <div className="hidden lg:flex items-center gap-4">
+        {/* Desktop Navigation - Also shows Home on mobile for Register page */}
+        <div className={`${location.pathname === '/register' ? 'flex' : 'hidden lg:flex'} items-center gap-4`}>
           <div className="flex items-center gap-1">
-            {navLinks.filter(item => isHome || item.name === 'Home').map((item) => {
+            {navLinks.filter(item => (isHome || item.name === 'Home') && (location.pathname !== '/register' || item.name === 'Home')).map((item) => {
               const isActive = isHome ? activeSection === item.href : false;
               return (
               <a 
@@ -193,52 +193,56 @@ const Navbar = () => {
             )})}
           </div>
           
-          <div className="flex items-center gap-3 pl-4 border-l border-slate-200 transition-colors duration-500">
-            {user ? (
-              <div className="flex items-center gap-3">
-                <Link 
-                  to={getDashboardLink()} 
-                  className={`btn border-2 px-5 py-2 text-[0.7rem] uppercase tracking-widest font-black ${buttonBorderClass} transition-all duration-300 hover:translate-y-[-2px] hover:shadow-lg`}
-                >
-                  Dashboard
-                </Link>
-                <motion.button 
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleLogout} 
-                  className="p-2 text-slate-500 hover:text-red-500 transition-colors rounded-full hover:bg-red-50"
-                  title="Logout"
-                >
-                  <LogOut size={18} />
-                </motion.button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Link 
-                  to="/login" 
-                  className={`px-5 py-2 text-[0.7rem] uppercase tracking-widest font-black transition-all ${textColorClass} hover:text-indigo-600`}
-                >
-                  Login
-                </Link>
-                <Link 
-                  to="/register" 
-                  className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 text-[0.7rem] uppercase tracking-widest font-black shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:translate-y-[-2px] transition-all"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
-          </div>
+          {location.pathname !== '/register' && (
+            <div className="flex items-center gap-3 pl-4 border-l border-slate-200 transition-colors duration-500">
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <Link 
+                    to={getDashboardLink()} 
+                    className={`btn border-2 px-5 py-2 text-[0.7rem] uppercase tracking-widest font-black ${buttonBorderClass} transition-all duration-300 hover:translate-y-[-2px] hover:shadow-lg`}
+                  >
+                    Dashboard
+                  </Link>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleLogout} 
+                    className="p-2 text-slate-500 hover:text-red-500 transition-colors rounded-full hover:bg-red-50"
+                    title="Logout"
+                  >
+                    <LogOut size={18} />
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Link 
+                    to="/login" 
+                    className={`px-5 py-2 text-[0.7rem] uppercase tracking-widest font-black transition-all ${textColorClass} hover:text-indigo-600`}
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    to="/register" 
+                    className="btn btn-primary bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 text-[0.7rem] uppercase tracking-widest font-black shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:translate-y-[-2px] transition-all"
+                  >
+                    Register
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Mobile Toggle */}
-        <motion.div 
-          whileTap={{ scale: 0.9 }}
-          className="lg:hidden z-50 cursor-pointer text-slate-800 p-2.5 bg-slate-100/80 backdrop-blur-md rounded-xl border border-white shadow-sm"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          {isOpen ? <X size={20} /> : <Menu size={20} />}
-        </motion.div>
+        {location.pathname !== '/register' && (
+          <motion.div 
+            whileTap={{ scale: 0.9 }}
+            className="lg:hidden z-50 cursor-pointer text-slate-800 p-2.5 bg-slate-100/80 backdrop-blur-md rounded-xl border border-white shadow-sm"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {isOpen ? <X size={20} /> : <Menu size={20} />}
+          </motion.div>
+        )}
       </div>
 
       {/* Mobile Menu Dropdown */}
@@ -249,9 +253,9 @@ const Navbar = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute top-full left-0 right-0 bg-white border-b border-slate-200 shadow-2xl lg:hidden z-50 transform-gpu"
+            className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-2xl lg:hidden z-50 transform-gpu"
           >
-            <div className="p-6 flex flex-col gap-2 bg-white">
+            <div className="p-6 flex flex-col gap-2">
               <div className="flex flex-col gap-1 mb-6">
                 <span className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-slate-400 mb-2 px-2">Menu</span>
                 {navLinks.filter(item => isHome || item.name === 'Home').map((item) => {

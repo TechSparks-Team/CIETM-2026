@@ -609,12 +609,16 @@ const HomePage = () => {
                   className="bg-white p-12 md:p-8 rounded-2xl text-center shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] border border-slate-200 hover:border-indigo-500 transition-all duration-300 relative overflow-hidden group h-full"
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="mb-7 inline-block relative">
+                  <div className="mb-7 inline-block relative w-full overflow-hidden rounded-[20px]">
                     {p.img ? (
-                      <img src={p.img} alt={p.name} className="w-[440px] h-[340px] rounded-[20px] object-cover border-4 border-slate-50 bg-slate-100 shadow-sm transition-transform duration-300 group-hover:scale-105" />
+                      <img 
+                        src={p.img} 
+                        alt={p.name} 
+                        className="w-full aspect-[4/3] object-cover border-4 border-slate-50 bg-slate-100 shadow-sm transition-transform duration-500 group-hover:scale-110" 
+                      />
                     ) : (
-                      <div className="w-[140px] h-[140px] rounded-[20px] bg-slate-100 text-slate-500 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
-                        <User size={36} strokeWidth={2} />
+                      <div className="w-full aspect-[4/3] bg-slate-100 text-slate-500 flex items-center justify-center shadow-sm">
+                        <User size={48} strokeWidth={1.5} />
                       </div>
                     )}
                   </div>
@@ -635,12 +639,16 @@ const HomePage = () => {
                   className="bg-white p-12 md:p-8 rounded-2xl text-center shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] border border-slate-200 hover:border-indigo-500 transition-all duration-300 relative overflow-hidden group h-full"
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="mb-7 inline-block relative">
+                  <div className="mb-7 inline-block relative w-full overflow-hidden rounded-[20px]">
                     {p.img ? (
-                      <img src={p.img} alt={p.name} className="w-[440px] h-[340px] rounded-[20px] object-cover border-4 border-slate-50 bg-indigo-50 text-indigo-600 shadow-sm transition-transform duration-300 group-hover:scale-105" />
+                      <img 
+                        src={p.img} 
+                        alt={p.name} 
+                        className="w-full aspect-[4/3] object-cover border-4 border-slate-50 bg-indigo-50 text-indigo-600 shadow-sm transition-transform duration-500 group-hover:scale-110" 
+                      />
                     ) : (
-                      <div className="w-[140px] h-[140px] rounded-[20px] bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
-                        <User size={36} strokeWidth={2} />
+                      <div className="w-full aspect-[4/3] bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
+                        <User size={48} strokeWidth={1.5} />
                       </div>
                     )}
                   </div>
@@ -662,12 +670,16 @@ const HomePage = () => {
                   className="bg-white p-12 md:p-8 rounded-2xl text-center shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1)] border border-slate-200 hover:border-indigo-500 transition-all duration-300 relative overflow-hidden group h-full"
                 >
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="mb-7 inline-block relative">
+                  <div className="mb-7 inline-block relative w-full overflow-hidden rounded-[20px]">
                     {p.img ? (
-                      <img src={p.img} alt={p.name} className="w-[240px] h-[240px] rounded-[20px] object-cover object-top border-4 border-slate-50 bg-blue-50 shadow-sm transition-transform duration-300 group-hover:scale-105" />
+                      <img 
+                        src={p.img} 
+                        alt={p.name} 
+                        className="w-full aspect-square object-cover object-top border-4 border-slate-50 bg-blue-50 shadow-sm transition-transform duration-500 group-hover:scale-110" 
+                      />
                     ) : (
-                      <div className="w-[240px] h-[240px] rounded-[20px] bg-blue-50 text-indigo-600 flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
-                        <User size={36} strokeWidth={2} />
+                      <div className="w-full aspect-square bg-blue-50 text-indigo-600 flex items-center justify-center shadow-sm">
+                        <User size={48} strokeWidth={1.5} />
                       </div>
                     )}
                   </div>
@@ -757,50 +769,59 @@ const HomePage = () => {
             </p>
           </div>
 
-          <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:justify-center gap-6 md:gap-8 pb-10 md:pb-0 px-4 md:px-0 hide-scrollbar">
-            {[
-              { name: "Mr. G. R. Seenivasan", role: "Assistant Professor", dept: "Civil Engineering", img: "/organizing team/G R Seenivasan.jpeg" },
-              { name: "Ms. N. Mithraa", role: "Assistant Professor", dept: "Information Technology", img: "/organizing team/Nmithra.jpeg" },
-              { name: "Ms. R. Yoga", role: "Assistant Professor", dept: "Computer Science & Engineering", img: "/organizing team/Yoga.png" },
-              { name: "Ms. M. Abirami", role: "Assistant Professor", dept: "Computer Science & Engineering", img: "/organizing team/Abirami.png" },
-              { name: "Ms. P. Chandralakshmi", role: "Assistant Professor", dept: "Electrical & Electronics Engineering", img: "/organizing team/Chandralakshmi.jpeg" },
-              { name: "Mr. S. Arunkumar ", role: "Assistant Professor", dept: "Electronics Engineering - VLSI", img: "/organizing team/Arunkumar .jpeg" },
-              { name: "Ms. R. R. Yuganandhine", role: "Assistant Professor", dept: "Electronics & Communication Engineering", img: "/organizing team/Yuganandhine.png" },
-              { name: "Dr. L. Venkatesh", role: "Associate Professor", dept: "Mechanical Engineering", img: "/organizing team/venkatesh.jpeg" },
-              { name: "Mr. K. Senthilkumar", role: "Assistant Professor", dept: "Mechatronics Engineering", img: "/organizing team/Senthilkumar K.jpg.jpeg" },
-              { name: "Ms. T. Malarvizhi", role: "Assistant Professor", dept: "Artificial Intelligence & Data Science", img: "/organizing team/Malarvizhi.png" },
-              { name: "Dr. M. Arunmozhi", role: "Associate Professor", dept: "Master of Business Administration", img: "/organizing team/Arunmozhi.jpeg" },
-              { name: "Ms. S. R. Sarvada", role: "Assistant Professor", dept: "Science & Humanities - English", img: "/organizing team/S.R.Sarvada.jpeg" },
-              { name: "Ms. V. Mohana Priya", role: "Assistant Professor", dept: "Science & Humanities - Mathematics", img: "/organizing team/Mohana-Priya .jpeg" },
-              { name: "Ms. K. Sangavi", role: "Assistant Professor", dept: "Science & Humanities - Mathematics", img: "/organizing team/Sangavi.jpeg" },
-            ].map((m, idx) => (
-              <div
-                key={idx}
-                className="w-[220px] md:w-[260px] shrink-0 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm transition-all duration-300 flex flex-col items-center text-center"
-              >
-                <div className="w-32 h-32 md:w-40 md:h-40 mb-5">
-                  {m.img ? (
-                    <img
-                      src={m.img}
-                      alt={m.name}
-                      className="w-full h-full rounded-2xl object-cover object-top border-4 border-slate-50 shadow-sm"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center border-4 border-slate-50">
-                      <User size={40} />
-                    </div>
-                  )}
-                </div>
+          <div className="relative">
+            {/* Mobile Scroll Hint - Left */}
+            <div className="absolute left-0 top-0 bottom-10 w-12 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none md:hidden opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            
+            {/* Mobile Scroll Hint - Right */}
+            <div className="absolute right-0 top-0 bottom-10 w-12 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none md:hidden transition-opacity"></div>
 
-                <div className="space-y-2">
-                  <h4 className="text-base md:text-lg font-bold text-slate-800 leading-tight">{m.name}</h4>
-                  <div className="flex flex-col gap-1.5 items-center">
-                    <span className="text-[10px] md:text-[11px] font-bold text-indigo-600 uppercase tracking-widest px-3 py-1 bg-indigo-50 rounded-full">{m.role}</span>
-                    <p className="text-[9px] md:text-[10px] font-semibold text-slate-400 uppercase tracking-[0.05em] leading-relaxed">{m.dept}</p>
+            <div className="flex flex-nowrap overflow-x-auto md:flex-wrap md:justify-center gap-6 md:gap-8 pb-10 md:pb-0 px-4 md:px-0 hide-scrollbar relative">
+              {[
+                { name: "Mr. G. R. Seenivasan", role: "Assistant Professor", dept: "Civil Engineering", img: "/organizing team/G R Seenivasan.jpeg" },
+                { name: "Ms. N. Mithraa", role: "Assistant Professor", dept: "Information Technology", img: "/organizing team/Nmithra.jpeg" },
+                { name: "Ms. R. Yoga", role: "Assistant Professor", dept: "Computer Science & Engineering", img: "/organizing team/Yoga.png" },
+                { name: "Ms. M. Abirami", role: "Assistant Professor", dept: "Computer Science & Engineering", img: "/organizing team/Abirami.png" },
+                { name: "Ms. P. Chandralakshmi", role: "Assistant Professor", dept: "Electrical & Electronics Engineering", img: "/organizing team/Chandralakshmi.jpeg" },
+                { name: "Mr. S. Arunkumar ", role: "Assistant Professor", dept: "Electronics Engineering - VLSI", img: "/organizing team/Arunkumar .jpeg" },
+                { name: "Ms. R. R. Yuganandhine", role: "Assistant Professor", dept: "Electronics & Communication Engineering", img: "/organizing team/Yuganandhine.png" },
+                { name: "Dr. L. Venkatesh", role: "Associate Professor", dept: "Mechanical Engineering", img: "/organizing team/venkatesh.jpeg" },
+                { name: "Mr. K. Senthilkumar", role: "Assistant Professor", dept: "Mechatronics Engineering", img: "/organizing team/Senthilkumar K.jpg.jpeg" },
+                { name: "Ms. T. Malarvizhi", role: "Assistant Professor", dept: "Artificial Intelligence & Data Science", img: "/organizing team/Malarvizhi.png" },
+                { name: "Dr. M. Arunmozhi", role: "Associate Professor", dept: "Master of Business Administration", img: "/organizing team/Arunmozhi.jpeg" },
+                { name: "Ms. S. R. Sarvada", role: "Assistant Professor", dept: "Science & Humanities - English", img: "/organizing team/S.R.Sarvada.jpeg" },
+                { name: "Ms. V. Mohana Priya", role: "Assistant Professor", dept: "Science & Humanities - Mathematics", img: "/organizing team/Mohana-Priya .jpeg" },
+                { name: "Ms. K. Sangavi", role: "Assistant Professor", dept: "Science & Humanities - Mathematics", img: "/organizing team/Sangavi.jpeg" },
+              ].map((m, idx) => (
+                <div
+                  key={idx}
+                  className="w-[220px] md:w-[260px] shrink-0 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm transition-all duration-300 flex flex-col items-center text-center hover:shadow-md hover:-translate-y-1"
+                >
+                  <div className="w-32 h-32 md:w-40 md:h-40 mb-5 relative group/img">
+                    <div className="absolute inset-0 bg-indigo-500/0 group-hover/img:bg-indigo-500/10 transition-colors rounded-2xl z-10"></div>
+                    {m.img ? (
+                      <img
+                        src={m.img}
+                        alt={m.name}
+                        className="w-full h-full rounded-2xl object-cover object-top border-4 border-slate-50 shadow-sm transition-transform duration-500 group-hover/img:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center border-4 border-slate-50">
+                        <User size={40} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-base md:text-lg font-bold text-slate-800 leading-tight">{m.name}</h4>
+                    <div className="flex flex-col gap-1.5 items-center">
+                      <span className="text-[10px] md:text-[11px] font-bold text-indigo-600 uppercase tracking-widest px-3 py-1 bg-indigo-50 rounded-full">{m.role}</span>
+                      <p className="text-[9px] md:text-[10px] font-semibold text-slate-400 uppercase tracking-[0.05em] leading-relaxed">{m.dept}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -819,15 +840,15 @@ const HomePage = () => {
               <div className="absolute inset-0 bg-black/50 z-10 transition-opacity group-hover:opacity-80"></div>
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/60 to-transparent z-10"></div>
 
-              <div className="relative z-20 p-8 pt-10 pb-28 md:p-20 max-w-4xl text-center text-white">
+              <div className="relative z-20 p-8 pt-10 pb-28 md:p-20 max-w-5xl text-center text-white">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   className="mb-6 md:mb-8"
                 >
-                  <h2 className="text-3xl sm:text-4xl md:text-7xl font-black mb-4 md:mb-6 leading-[1.1] tracking-tighter text-white drop-shadow-2xl">
-                    Coimbatore Institute <br /> of <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">Engineering and Technology</span>
+                  <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-4 md:mb-6 leading-[1.2] tracking-tighter text-white drop-shadow-2xl">
+                    Coimbatore Institute of <br className="hidden sm:block" /> <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400 sm:whitespace-nowrap">Engineering and Technology</span>
                   </h2>
                 </motion.div>
                 <motion.p
@@ -950,10 +971,11 @@ const HomePage = () => {
                     <div key={idx} className={`absolute group/hotspot ${isActive ? 'z-40' : 'z-30'}`} style={dev.pos}>
                       {/* Invisible Hitbox Area */}
                       <button 
+                        type="button"
                         tabIndex="0" 
-                        className={`absolute inset-0 w-full h-full cursor-pointer outline-none transition-colors duration-300 rounded-[2.5rem] z-20 ${
-                          isActive ? 'bg-white/10' : 
-                          'focus:bg-white/10 hover:bg-white/10'
+                        className={`absolute inset-0 w-full h-full cursor-pointer outline-none transition-all duration-300 rounded-[2.5rem] z-20 ${
+                          isActive ? 'bg-indigo-500/10 border-2 border-indigo-500/30' : 
+                          'focus:bg-white/10 hover:bg-white/10 border-2 border-transparent'
                         }`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1029,8 +1051,17 @@ const HomePage = () => {
                   Engineered by <br className="hidden lg:block"/>
                   <span className="relative inline-block">
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 animate-gradient-x">IT Students</span>
-                    <svg className="absolute w-full h-3 -bottom-1 left-0 text-indigo-400/30" viewBox="0 0 100 10" preserveAspectRatio="none">
-                      <path d="M0 5 Q 50 -5 100 5" stroke="currentColor" strokeWidth="3" fill="none" />
+                    <svg className="absolute w-full h-3 -bottom-1 left-0 text-indigo-500/40" viewBox="0 0 100 10" preserveAspectRatio="none">
+                      <motion.path 
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        whileInView={{ pathLength: 1, opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
+                        d="M0 5 Q 50 -5 100 5" 
+                        stroke="currentColor" 
+                        strokeWidth="3" 
+                        fill="none" 
+                      />
                     </svg>
                   </span>
                 </h2>

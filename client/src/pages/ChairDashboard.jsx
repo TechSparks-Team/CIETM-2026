@@ -8,7 +8,7 @@ import {
   Settings, Bell, Shield, ChevronRight, Lock,
   TrendingUp, Download, Menu, X, Users, Layers,
   QrCode, ScanLine, ShieldCheck, CreditCard, AlertCircle, IndianRupee,
-  ExternalLink, Mail, LogOut, CheckSquare, Square, Trash2
+  ExternalLink, Mail, LogOut, CheckSquare, Square, Trash2, RefreshCw
 } from 'lucide-react';
 import { CONFERENCE_TRACKS } from '../constants/conferenceData';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -529,7 +529,7 @@ const ChairDashboard = () => {
           <div className="flex items-center gap-3">
              {refreshing && <div className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>}
              <button onClick={fetchData} className="p-3 md:px-4 md:py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2">
-               <TrendingUp size={14} /> Force Sync
+               <RefreshCw size={14} className={`${refreshing ? 'animate-spin' : ''}`} /> Force Sync
              </button>
              <button title="Export to Excel" onClick={exportToExcel} className="p-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
                <Download size={18} className="text-blue-600" />
@@ -570,68 +570,68 @@ const ChairDashboard = () => {
           {activeTab === 'overview' && (
             <div className="space-y-8 animate-fade-in">
               {/* KPI Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-16 h-16 md:w-24 md:h-24 bg-indigo-50/50 rounded-bl-[40px] md:rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
                   <div className="relative z-10">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                       <Layers size={12} className="text-indigo-600" /> Intake Velocity
+                    <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 md:mb-1.5 flex items-center gap-2">
+                       <Layers size={12} className="text-indigo-600" /> <span className="truncate">Intake Velocity</span>
                     </p>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-3xl font-black text-slate-800 tracking-tight">{filteredData.length}</p>
-                      <span className="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full">+12%</span>
+                    <div className="flex items-baseline gap-1 md:gap-2">
+                      <p className="text-xl md:text-3xl font-black text-slate-800 tracking-tight">{filteredData.length}</p>
+                      <span className="text-[8px] md:text-[10px] font-bold text-emerald-500 bg-emerald-50 px-1.5 md:px-2 py-0.5 rounded-full">+12%</span>
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">Total Active Manuscripts</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-slate-400 mt-1 md:mt-2 uppercase tracking-wide truncate">Total Active Manuscripts</p>
                   </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-16 h-16 md:w-24 md:h-24 bg-emerald-50/50 rounded-bl-[40px] md:rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
                   <div className="relative z-10">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                       <CheckCircle size={12} className="text-emerald-600" /> Completion Rate
+                    <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 md:mb-1.5 flex items-center gap-2">
+                       <CheckCircle size={12} className="text-emerald-600" /> <span className="truncate">Completion Rate</span>
                     </p>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-3xl font-black text-slate-800 tracking-tight">
+                    <div className="flex items-baseline gap-1 md:gap-2">
+                      <p className="text-xl md:text-3xl font-black text-slate-800 tracking-tight">
                         {Math.round((filteredData.filter(r => r.status === 'Accepted').length / (filteredData.length || 1)) * 100)}%
                       </p>
-                      <span className="text-[10px] font-bold text-slate-400">{filteredData.filter(r => r.status === 'Accepted').length} Finalized</span>
+                      <span className="text-[8px] md:text-[10px] font-bold text-slate-400 hidden sm:inline">{filteredData.filter(r => r.status === 'Accepted').length} Finalized</span>
                     </div>
-                    <div className="mt-3 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="mt-2 md:mt-3 h-1 md:h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${(filteredData.filter(r => r.status === 'Accepted').length / (filteredData.length || 1)) * 100}%` }}></div>
                     </div>
                   </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                   <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 w-16 h-16 md:w-24 md:h-24 bg-amber-50/50 rounded-bl-[40px] md:rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
                    <div className="relative z-10">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                       <Clock size={12} className="text-amber-500" /> Evaluation Pulse
+                    <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 md:mb-1.5 flex items-center gap-2">
+                       <Clock size={12} className="text-amber-500" /> <span className="truncate">Evaluation Pulse</span>
                     </p>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-3xl font-black text-slate-800 tracking-tight">
+                    <div className="flex items-baseline gap-1 md:gap-2">
+                      <p className="text-xl md:text-3xl font-black text-slate-800 tracking-tight">
                          {filteredData.filter(r => r.status === 'Under Review').length}
                       </p>
-                      <span className="text-[10px] font-bold text-amber-500">Active Review</span>
+                      <span className="text-[8px] md:text-[10px] font-bold text-amber-500 truncate">Active Review</span>
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">Papers currently with board</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-slate-400 mt-1 md:mt-2 uppercase tracking-wide truncate">Papers currently with board</p>
                   </div>
                 </motion.div>
 
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
-                   <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50/50 rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 w-16 h-16 md:w-24 md:h-24 bg-blue-50/50 rounded-bl-[40px] md:rounded-bl-[60px] -z-0 transition-transform group-hover:scale-110"></div>
                    <div className="relative z-10">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                       <Users size={12} className="text-blue-600" /> Assign Queue
+                    <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 md:mb-1.5 flex items-center gap-2">
+                       <Users size={12} className="text-blue-600" /> <span className="truncate">Assign Queue</span>
                     </p>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-3xl font-black text-slate-800 tracking-tight">
+                    <div className="flex items-baseline gap-1 md:gap-2">
+                      <p className="text-xl md:text-3xl font-black text-slate-800 tracking-tight">
                          {filteredData.filter(r => r.status === 'Submitted' && !r.paperDetails?.assignedReviewer).length}
                       </p>
-                      <span className="text-[10px] font-bold text-blue-500">Unassigned</span>
+                      <span className="text-[8px] md:text-[10px] font-bold text-blue-500 truncate">Unassigned</span>
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 mt-2 uppercase tracking-wide">Action needed to distribute</p>
+                    <p className="text-[8px] md:text-[10px] font-bold text-slate-400 mt-1 md:mt-2 uppercase tracking-wide truncate">Action needed</p>
                   </div>
                 </motion.div>
               </div>

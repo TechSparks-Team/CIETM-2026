@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import {
-  Users, FileCheck, Clock, CheckCircle,
+  Users, FileCheck, Clock, CheckCircle, Layers,
   XCircle, Search, Filter, ExternalLink, Home,
   LayoutDashboard, Download, PieChart, BarChart2,
   Settings, Bell, Mail, Shield, ChevronRight,
-  TrendingUp, IndianRupee, AlertCircle, CreditCard, Trash2, UserPlus, LogOut
+  TrendingUp, IndianRupee, AlertCircle, CreditCard, Trash2, UserPlus, LogOut, RefreshCw, Zap, ChevronDown
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -133,7 +133,12 @@ const AdminDashboard = () => {
   const [selectedTracks, setSelectedTracks] = useState([]);
   const [promoteEmail, setPromoteEmail] = useState('');
   const [userFilter, setUserFilter] = useState('All');
+  const [userSearch, setUserSearch] = useState('');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isMobileUserFilterOpen, setIsMobileUserFilterOpen] = useState(false);
+  const [activeReviewerMenu, setActiveReviewerMenu] = useState(null);
+  const [activeUserRoleMenu, setActiveUserRoleMenu] = useState(null);
+  const [updatingRole, setUpdatingRole] = useState(false);
   const mobileFilterRef = useRef(null);
   const verifyingRef = useRef(false);
 
@@ -147,13 +152,31 @@ const AdminDashboard = () => {
 
   const calculateRequiredFee = (reg) => {
     if (!reg) return 0;
-    let total = CATEGORY_AMOUNTS[reg.personalDetails?.category] || 1000;
+    let total = CATEGORY_AMOUNTS[reg.personalDetails?.category] || 0;
     if (reg.teamMembers && reg.teamMembers.length > 0) {
       reg.teamMembers.forEach(member => {
-        total += CATEGORY_AMOUNTS[member.category] || 1000;
+        total += CATEGORY_AMOUNTS[member.category] || 0;
       });
     }
     return total;
+  };
+
+  const calculatePortfolioBalance = (reg) => {
+    if (!reg) return 0;
+    let balance = 0;
+    // Scanned paper
+    if (reg.status === 'Accepted' && reg.paymentStatus !== 'Completed') {
+      balance += calculateRequiredFee(reg);
+    }
+    // Associated papers
+    if (reg.otherPapers) {
+      reg.otherPapers.forEach(p => {
+        if (p.status === 'Accepted' && p.paymentStatus !== 'Completed') {
+          balance += calculateRequiredFee(p);
+        }
+      });
+    }
+    return balance;
   };
 
   useEffect(() => {
@@ -326,6 +349,28 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleRevokeVerification = async (reg) => {
+    if (!window.confirm("Are you sure you want to revoke this user's entry authorization and reset their payment status?")) return;
+    
+    const loadingToast = toast.loading("Revoking Authorization...");
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      const { data } = await axios.put(`/api/registrations/${reg._id}/status`, {
+        paymentStatus: 'Pending',
+        attended: false,
+        remarks: `Authorization revoked by Admin on ${new Date().toLocaleString()}`
+      }, config);
+
+      setRegistrations(registrations.map(r => r._id === reg._id ? data : r));
+      if (selectedReg?._id === reg._id) setSelectedReg(data);
+      if (scannedResult?._id === reg._id) setScannedResult(data);
+      toast.success("Authorization revoked successfully", { id: loadingToast });
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to revoke authorization", { id: loadingToast });
+    }
+  };
+
   const handleCleanupDatabase = async () => {
     const confirmation = prompt('Are you absolutely sure you want to PURGE the database? This action is IRREVERSIBLE. Type "CONFIRM" to proceed.');
     if (confirmation !== 'CONFIRM') return toast.error("Database purge cancelled.");
@@ -358,6 +403,7 @@ const AdminDashboard = () => {
   const handleRoleUpdate = async (userId, newRole) => {
     if (userId === user._id) return toast.error("You cannot change your own role.");
     
+    setUpdatingRole(true);
     const loadingToast = toast.loading(`Updating member access to ${newRole}...`);
     try {
       const config = { headers: { Authorization: `Bearer ${user?.token}` } };
@@ -366,6 +412,8 @@ const AdminDashboard = () => {
       fetchAllData();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update account credentials', { id: loadingToast });
+    } finally {
+      setUpdatingRole(false);
     }
   };
 
@@ -634,7 +682,7 @@ const AdminDashboard = () => {
               </button>
             </div>
             <button onClick={fetchAllData} className="p-3 md:px-4 md:py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2">
-              <TrendingUp size={14} />
+              <RefreshCw size={14} className={`${refreshing ? 'animate-spin' : ''}`} />
               <span className="hidden md:inline">Force Sync</span>
             </button>
             <button title="Export to Excel" onClick={exportToExcel} className="p-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
@@ -686,7 +734,7 @@ const AdminDashboard = () => {
                 className="space-y-10 max-w-7xl mx-auto"
               >
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                   {[
                     { 
                       label: 'Total Registrations', 
@@ -721,13 +769,13 @@ const AdminDashboard = () => {
                       key={i}
                       variants={itemVariants}
                       whileHover={{ y: -5 }}
-                      className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group"
+                      className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group"
                     >
-                      <div className={`w-12 h-12 rounded-2xl bg-${stat.color}-50 text-${stat.color}-600 flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform`}>
-                        <stat.icon size={24} />
+                      <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-${stat.color}-50 text-${stat.color}-600 flex items-center justify-center mb-3 md:mb-6 group-hover:scale-110 transition-transform`}>
+                        <stat.icon size={20} className="md:w-6 md:h-6" />
                       </div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                      <p className="text-2xl md:text-3xl font-black text-slate-800 mb-4">{stat.value}</p>
+                      <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 truncate">{stat.label}</p>
+                      <p className="text-xl md:text-3xl font-black text-slate-800 mb-3 md:mb-4 truncate">{stat.value}</p>
                       <div className="flex items-center gap-2">
                         <span className={`text-[8px] md:text-[9px] font-black px-2 py-1 rounded-md bg-${stat.color}-50 text-${stat.color}-600 uppercase tracking-tighter`}>
                           {stat.trend}
@@ -816,96 +864,98 @@ const AdminDashboard = () => {
 
             {activeTab === 'submissions' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <div className="flex flex-col gap-4 w-full">
-                  <div className="flex flex-row gap-2 w-full">
-                    <div className="relative flex-1 group">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={16} />
-                      <input
-                        type="text"
-                        placeholder="Search papers, authors..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 font-bold text-xs text-slate-700 transition-all shadow-sm"
-                      />
-                    </div>
-                    
-                    {/* Mobile View: Custom Stylish Dropdown (Beside Search) */}
-                    <div className="sm:hidden relative w-12 shrink-0" ref={mobileFilterRef}>
-                       <button
-                          onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-                          className={`w-full h-full flex items-center justify-center bg-white border border-slate-200 rounded-xl shadow-sm transition-all active:scale-95 ${filter !== 'All' ? 'border-indigo-500 bg-indigo-50/30' : ''}`}
-                       >
-                          <Filter size={16} className={filter !== 'All' ? 'text-indigo-600' : 'text-slate-400'} />
-                       </button>
-
-                       <AnimatePresence>
-                          {isMobileFilterOpen && (
-                             <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 5, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute top-full right-0 z-[60] mt-2 w-48 bg-white/80 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl shadow-indigo-200/40 overflow-hidden"
-                             >
-                                <div className="p-1.5 flex flex-col gap-1">
-                                   {[
-                                      { id: 'All', icon: <Layers size={14} /> },
-                                      { id: 'Submitted', icon: <Clock size={14}/> },
-                                      { id: 'Under Review', icon: <Shield size={14} /> },
-                                      { id: 'Accepted', icon: <CheckCircle size={14} /> },
-                                      { id: 'Rejected', icon: <XCircle size={14} /> }
-                                   ].map((item) => (
-                                      <button
-                                         key={item.id}
-                                         onClick={() => {
-                                            setFilter(item.id);
-                                            setIsMobileFilterOpen(false);
-                                         }}
-                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                            filter === item.id 
-                                            ? 'bg-indigo-600 text-white' 
-                                            : 'text-slate-500 hover:bg-slate-50'
-                                         }`}
-                                      >
-                                         <span className={filter === item.id ? 'text-white' : 'text-slate-400'}>{item.icon}</span>
-                                         {item.id}
-                                      </button>
-                                   ))}
-                                </div>
-                             </motion.div>
-                          )}
-                       </AnimatePresence>
-                    </div>
+                <div className="flex flex-row items-center gap-2 w-full">
+                  {/* Search Section */}
+                  <div className="relative flex-1 group min-w-0">
+                    <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={14} />
+                    <input
+                      type="text"
+                      placeholder="Search..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full pl-9 md:pl-10 pr-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 font-bold text-xs text-slate-700 transition-all shadow-sm"
+                    />
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
-                    {/* Desktop View: Full Filter Buttons */}
-                    <div className="hidden sm:flex gap-1.5 overflow-x-auto pb-1 sm:pb-0 px-1 custom-scrollbar scroll-smooth">
-                      {['All', 'Submitted', 'Under Review', 'Accepted', 'Rejected'].map(t => (
+                  {/* Filters Section */}
+                  <div className="relative shrink-0" ref={mobileFilterRef}>
+                    {/* Mobile Filter Toggle */}
+                    <button 
+                      onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+                      className={`sm:hidden p-2.5 rounded-xl border transition-all ${filter !== 'All' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                    >
+                      <Filter size={18} />
+                    </button>
+
+                    {/* Desktop Horizontal Filters */}
+                    <div className="hidden sm:flex gap-1 p-1 bg-slate-100/50 rounded-xl border border-slate-200">
+                      {[
+                        { id: 'All', icon: Layers },
+                        { id: 'Submitted', icon: Clock },
+                        { id: 'Under Review', icon: Shield },
+                        { id: 'Accepted', icon: CheckCircle },
+                        { id: 'Rejected', icon: XCircle }
+                      ].map((item) => (
                         <button
-                          key={t}
-                          onClick={() => setFilter(t)}
-                          className={`px-3.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${filter === t
-                            ? 'bg-slate-900 border-slate-900 text-white z-10'
-                            : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                          key={item.id}
+                          onClick={() => setFilter(item.id)}
+                          title={item.id}
+                          className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-2 ${filter === item.id
+                            ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
+                            : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
                             }`}
                         >
-                          {t}
+                          <item.icon size={13} />
+                          <span className="hidden xl:inline text-[9px] font-black uppercase tracking-widest whitespace-nowrap">{item.id}</span>
                         </button>
                       ))}
                     </div>
-                    
-                    <button
-                      onClick={handleAutoAssign}
-                      disabled={autoAssigning}
-                      className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${autoAssigning
-                          ? 'bg-slate-100 text-slate-400 border-slate-100'
-                          : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-100'
-                        }`}
-                    >
-                      <ShieldCheck size={18} className={autoAssigning ? 'animate-pulse' : ''} />
-                      {autoAssigning ? 'Syncing...' : 'Sync Unassigned Papers'}
-                    </button>
+
+                    {/* Mobile Dropdown Menu */}
+                    <AnimatePresence>
+                      {isMobileFilterOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 5, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute top-full right-0 z-[60] mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden"
+                        >
+                          <div className="p-1.5 flex flex-col gap-1">
+                            {[
+                              { id: 'All', icon: Layers },
+                              { id: 'Submitted', icon: Clock },
+                              { id: 'Under Review', icon: Shield },
+                              { id: 'Accepted', icon: CheckCircle },
+                              { id: 'Rejected', icon: XCircle }
+                            ].map((item) => (
+                              <button
+                                key={item.id}
+                                onClick={() => { setFilter(item.id); setIsMobileFilterOpen(false); }}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filter === item.id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                              >
+                                <item.icon size={14} />
+                                {item.id}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
+
+                  {/* Sync Action */}
+                  <button
+                    onClick={handleAutoAssign}
+                    disabled={autoAssigning}
+                    title="Sync Unassigned Papers"
+                    className={`flex items-center justify-center gap-2 p-2.5 sm:px-4 sm:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${autoAssigning
+                        ? 'bg-slate-100 text-slate-400 border-slate-100'
+                        : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-100'
+                      }`}
+                  >
+                    <Zap size={18} className={autoAssigning ? 'animate-pulse' : ''} />
+                    <span className="hidden md:inline">{autoAssigning ? 'Syncing...' : 'Sync Unassigned'}</span>
+                  </button>
                 </div>
 
                 <div className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
@@ -913,66 +963,126 @@ const AdminDashboard = () => {
                     <table className="w-full text-left border-collapse table-fixed">
                       <thead>
                         <tr className="bg-slate-50/50 border-b border-slate-100 uppercase tracking-[0.1em] text-[10px] font-black text-slate-400">
-                          <th className="px-4 py-5 w-[20%]">Primary Author</th>
-                          <th className="px-4 py-5 w-[25%]">Research Title</th>
-                          <th className="px-4 py-5 w-[12%] text-center">Track</th>
-                          <th className="px-4 py-5 w-[15%]">Reviewer</th>
-                          <th className="px-4 py-5 w-[10%]">Attendance</th>
-                          <th className="px-4 py-5 w-[12%]">Status</th>
-                          <th className="px-4 py-5 w-[18%] text-right">Actions</th>
+                          <th className="px-4 py-5 w-[60%] md:w-[20%] text-center">Primary Author</th>
+                          <th className="hidden md:table-cell px-4 py-5 w-[22%] text-center">Research Title</th>
+                          <th className="hidden md:table-cell px-4 py-5 w-[10%] text-center">Track</th>
+                          <th className="hidden lg:table-cell px-4 py-5 w-[15%] text-center">Reviewer</th>
+                          <th className="hidden xl:table-cell px-4 py-5 w-[10%] text-center">Attendance</th>
+                          <th className="px-4 py-5 w-[40%] md:w-[12%] text-center">Status</th>
+                          <th className="hidden md:table-cell px-4 py-5 w-[15%] text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {filteredData.map(reg => (
-                          <tr key={reg._id} className="hover:bg-slate-50/50 transition-colors group">
+                        {filteredData.map((reg, index) => (
+                          <tr 
+                            key={reg._id} 
+                            onClick={() => {
+                              if (window.innerWidth < 768) setSelectedReg(reg);
+                            }}
+                            className="hover:bg-slate-50/50 transition-colors group cursor-pointer md:cursor-default"
+                          >
                             <td className="px-4 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase cursor-pointer overflow-hidden border border-slate-100 shadow-sm" onClick={() => setSelectedReg(reg)}>
+                                <div className="hidden sm:flex w-9 h-9 rounded-full bg-indigo-50 text-indigo-600 items-center justify-center font-bold text-xs uppercase cursor-pointer overflow-hidden border border-slate-100 shadow-sm" onClick={(e) => { e.stopPropagation(); setSelectedReg(reg); }}>
                                   {reg.personalDetails?.profilePicture ? (
                                     <img src={reg.personalDetails.profilePicture} alt="" className="w-full h-full object-cover" />
                                   ) : (reg.personalDetails?.name || reg.userId?.name)?.charAt(0)}
                                 </div>
-                                <div>
-                                  <p className="text-sm font-black text-slate-800 leading-none">{reg.personalDetails?.name || reg.userId?.name}</p>
-                                  <p className="text-[10px] font-semibold text-slate-400 mt-1">{reg.userId?.email}</p>
-                                  <div className="flex flex-col gap-1 font-mono">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-black text-slate-800 leading-none truncate">{reg.personalDetails?.name || reg.userId?.name}</p>
+                                  <p className="text-[10px] font-semibold text-slate-400 mt-1 truncate">{reg.userId?.email}</p>
+                                  <div className="flex flex-wrap gap-1 mt-1 font-mono">
                                      <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter bg-indigo-50/50 px-1.5 py-0.5 rounded border border-indigo-100/50 w-max">
                                         {reg.userId?.delegateId || 'NO_USER_ID'}
                                      </span>
-                                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-tighter bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 w-max">
+                                     <span className="hidden md:inline-block text-[9px] font-black text-slate-500 uppercase tracking-tighter bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 w-max">
                                         {reg.paperId || (reg.personalDetails?.authorId || `#PAPER-${reg._id.slice(-6).toUpperCase()}`)}
                                      </span>
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-4">
+                            <td className="hidden md:table-cell px-4 py-4">
                               <p className="text-sm font-bold text-slate-700 max-w-xs truncate group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => setSelectedReg(reg)}>
                                  {reg.paperDetails?.title || 'Untitled Submission'}
                               </p>
                             </td>
-                            <td className="px-4 py-4 text-center">
+                            <td className="hidden md:table-cell px-4 py-4 text-center">
                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-1 rounded border border-slate-100 italic">
                                   {reg.paperDetails?.track || 'Not Specified'}
                                </span>
                             </td>
-                            <td className="px-4 py-4">
-                                 <select 
-                                   className="w-full max-w-[150px] bg-slate-50 border-none rounded-lg py-1 px-2 text-[10px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
-                                   value={reg.paperDetails?.assignedReviewer?._id || ''}
-                                   onChange={(e) => handleAssignReviewer(reg._id, e.target.value)}
+                            <td className="hidden lg:table-cell px-4 py-4 overflow-visible">
+                               <div className="relative flex justify-center">
+                                 <button 
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     setActiveReviewerMenu(activeReviewerMenu === reg._id ? null : reg._id);
+                                   }}
                                    disabled={assigningReviewer}
+                                   className={`w-full max-w-[140px] flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                                     reg.paperDetails?.assignedReviewer 
+                                       ? 'bg-indigo-50 border-indigo-100 text-indigo-700' 
+                                       : 'bg-slate-50 border-slate-100 text-slate-500'
+                                   } hover:border-indigo-300 active:scale-95 disabled:opacity-50`}
                                  >
-                                   <option value="">{reg.paperDetails?.assignedReviewer ? 'Unassign Reviewer' : 'Assign Reviewer...'}</option>
-                                   {reviewers.map(rev => (
-                                     <option key={rev._id} value={rev._id}>
-                                       {rev.name}
-                                     </option>
-                                   ))}
-                                 </select>
+                                   <span className="truncate">
+                                     {reg.paperDetails?.assignedReviewer?.name || 'Reviewer'}
+                                   </span>
+                                   <ChevronDown size={14} className={`shrink-0 transition-transform duration-300 ${activeReviewerMenu === reg._id ? 'rotate-180' : ''}`} />
+                                 </button>
+
+                                 <AnimatePresence>
+                                   {activeReviewerMenu === reg._id && (
+                                     <>
+                                       <div className="fixed inset-0 z-[70]" onClick={() => setActiveReviewerMenu(null)} />
+                                       <motion.div
+                                         initial={{ opacity: 0, y: (filteredData.length - index) <= 2 ? -10 : 10, scale: 0.95 }}
+                                         animate={{ opacity: 1, y: (filteredData.length - index) <= 2 ? -5 : 5, scale: 1 }}
+                                         exit={{ opacity: 0, y: (filteredData.length - index) <= 2 ? -10 : 10, scale: 0.95 }}
+                                         className={`absolute left-0 ${(filteredData.length - index) <= 2 ? 'bottom-full mb-2' : 'top-full mt-2'} z-[80] w-56 bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden p-1.5`}
+                                       >
+                                         <div className="flex flex-col gap-1 max-h-60 overflow-y-auto no-scrollbar">
+                                           <button
+                                              onClick={() => {
+                                                handleAssignReviewer(reg._id, "");
+                                                setActiveReviewerMenu(null);
+                                              }}
+                                              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-red-500 hover:bg-red-50 transition-all"
+                                           >
+                                              <Trash2 size={14} />
+                                              Unassign
+                                           </button>
+                                           
+                                           {reviewers.map(rev => {
+                                             const isActive = reg.paperDetails?.assignedReviewer?._id === rev._id;
+                                             return (
+                                               <button
+                                                 key={rev._id}
+                                                 onClick={() => {
+                                                   handleAssignReviewer(reg._id, rev._id);
+                                                   setActiveReviewerMenu(null);
+                                                 }}
+                                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                                                   isActive
+                                                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                     : 'text-slate-500 hover:bg-slate-50'
+                                                 }`}
+                                               >
+                                                 <Users size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
+                                                 {rev.name}
+                                               </button>
+                                             );
+                                           })}
+                                         </div>
+                                       </motion.div>
+                                     </>
+                                   )}
+                                 </AnimatePresence>
+                               </div>
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center gap-2">
+                            <td className="hidden xl:table-cell px-4 py-4">
+                              <div className="flex items-center justify-center gap-2">
                                  {reg.attended ? (
                                    <span className="flex items-center gap-1.5 text-[9px] font-black text-blue-600 uppercase tracking-tighter"><CheckCircle size={14} /> Present</span>
                                  ) : (
@@ -980,22 +1090,23 @@ const AdminDashboard = () => {
                                  )}
                               </div>
                             </td>
-                            <td className="px-4 py-4">
-                              <span className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block shadow-sm ${
+                            <td className="px-4 py-4 text-center">
+                              <span className={`px-2 md:px-3 py-1.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-widest inline-block shadow-sm ${
                                  reg.status === 'Accepted' ? 'bg-blue-100 text-blue-700' :
                                  reg.status === 'Rejected' ? 'bg-red-100 text-red-700' : 
                                  reg.status === 'Under Review' ? 'bg-amber-100 text-amber-700' :
                                  (reg.status === 'Submitted' && !reg.paperDetails?.fileUrl) ? 'bg-slate-100 text-slate-600' :
                                  'bg-indigo-50 text-indigo-600'
                                }`}>
-                                 {reg.status === 'Submitted' && !reg.paperDetails?.fileUrl ? 'Pending Upload' : reg.status}
+                                 {reg.status === 'Submitted' && !reg.paperDetails?.fileUrl ? 'Pending' : reg.status}
                                </span>
                             </td>
-                            <td className="px-4 py-6 text-right">
+                            <td className="hidden md:table-cell px-4 py-6 text-right">
                                <div className="flex items-center justify-end gap-2">
                                   {reg.paperDetails?.fileUrl && (
                                     <button 
-                                       onClick={async () => {
+                                       onClick={async (e) => {
+                                         e.stopPropagation();
                                          const paperId = reg.paperId || reg._id.slice(-6).toUpperCase();
                                          const ext = reg.paperDetails?.originalName?.split('.').pop() || 'docx';
                                          const loadingToast = toast.loading('Preparing download…');
@@ -1009,19 +1120,19 @@ const AdminDashboard = () => {
                                            toast.error(err.message || 'Download failed', { id: loadingToast });
                                          }
                                        }}
-                                       className="p-2.5 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
+                                       className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-all"
                                        title="Download Manuscript"
                                     >
-                                       <Download size={16} />
+                                       <Download size={14} />
                                     </button>
                                   )}
-                                  <button onClick={() => setSelectedReg(reg)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-xl font-black text-[10px] px-3 uppercase tracking-tighter transition-all">Inspect</button>
+                                  <button onClick={(e) => { e.stopPropagation(); setSelectedReg(reg); }} className="p-2 bg-slate-50 text-slate-400 hover:text-indigo-600 rounded-lg font-black text-[9px] px-2.5 uppercase tracking-tighter transition-all">Inspect</button>
                                   <button
-                                    onClick={() => handleDeleteSubmission(reg._id)}
-                                    className="p-2.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl transition-all"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteSubmission(reg._id); }}
+                                    className="p-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all"
                                     title="Delete Paper"
                                   >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={14} />
                                   </button>
                                </div>
                             </td>
@@ -1030,9 +1141,14 @@ const AdminDashboard = () => {
                       </tbody>
                     </table>
                     {filteredData.length === 0 && (
-                      <div className="py-24 text-center opacity-30">
-                         <AlertCircle size={48} className="mx-auto mb-4 text-slate-300" />
-                         <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-500">No submissions found</p>
+                      <div className="py-20 text-center">
+                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">No matching papers found</p>
+                         <button 
+                           onClick={() => { setFilter('All'); setSearch(''); }}
+                           className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
+                         >
+                           Reset All Filters
+                         </button>
                       </div>
                     )}
                   </div>
@@ -1055,34 +1171,88 @@ const AdminDashboard = () => {
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Manage platform access</p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                      <div className="flex w-full sm:w-auto bg-slate-100/50 p-1.5 rounded-xl border border-slate-200 overflow-x-auto">
-                        {['All', 'Author', 'Reviewer', 'Chair'].map(f => (
-                          <button
-                            key={f}
-                            onClick={() => setUserFilter(f)}
-                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                              userFilter === f 
-                                ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' 
-                                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            {f}
-                          </button>
-                        ))}
+                    <div className="flex flex-row items-center gap-2 w-full xl:w-auto">
+                      {/* User Search Box */}
+                      <div className="relative flex-1 sm:w-64 group min-w-0">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={14} />
+                        <input
+                          type="text"
+                          placeholder="Search users..."
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2.5 bg-white rounded-xl border border-slate-200 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/5 font-bold text-xs text-slate-700 transition-all shadow-sm"
+                        />
                       </div>
 
-                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                        <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                          {users.filter(u => u.role !== 'admin' && (userFilter === 'All' || u.role.toLowerCase() === userFilter.toLowerCase())).length} {userFilter === 'All' ? 'Accounts' : `${userFilter}s`}
-                        </span>
-                        <button
-                          onClick={() => setIsCreateModalOpen(true)}
-                          className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2 whitespace-nowrap shrink-0"
+                      <div className="relative shrink-0">
+                        {/* Mobile Filter Toggle */}
+                        <button 
+                          onClick={() => setIsMobileUserFilterOpen(!isMobileUserFilterOpen)}
+                          className={`sm:hidden p-2.5 rounded-xl border transition-all ${userFilter !== 'All' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
                         >
-                          <UserPlus size={14} /> Create User
+                          <Filter size={18} />
                         </button>
+
+                        <div className="hidden sm:flex bg-slate-100/50 p-1 rounded-xl border border-slate-200">
+                          {[
+                            { id: 'All', icon: Layers },
+                            { id: 'Author', icon: Users },
+                            { id: 'Reviewer', icon: FileCheck },
+                            { id: 'Chair', icon: Shield }
+                          ].map(f => (
+                            <button
+                              key={f.id}
+                              onClick={() => setUserFilter(f.id)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-2 ${
+                                userFilter === f.id 
+                                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' 
+                                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                              }`}
+                            >
+                              <f.icon size={13} />
+                              <span className="hidden lg:inline">{f.id}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Mobile Dropdown Menu */}
+                        <AnimatePresence>
+                          {isMobileUserFilterOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 5, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-full right-0 z-[60] mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden"
+                            >
+                              <div className="p-1.5 flex flex-col gap-1">
+                                {[
+                                  { id: 'All', icon: Layers },
+                                  { id: 'Author', icon: Users },
+                                  { id: 'Reviewer', icon: FileCheck },
+                                  { id: 'Chair', icon: Shield }
+                                ].map((item) => (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => { setUserFilter(item.id); setIsMobileUserFilterOpen(false); }}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${userFilter === item.id ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                                  >
+                                    <item.icon size={14} />
+                                    {item.id}
+                                  </button>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
+
+                      <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="p-2.5 sm:px-4 sm:py-2.5 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-200 transition-all flex items-center gap-2 whitespace-nowrap shrink-0"
+                      >
+                        <UserPlus size={18} />
+                        <span className="hidden sm:inline">Create</span>
+                      </button>
                     </div>
                   </div>
                   <div className="overflow-x-auto custom-scrollbar">
@@ -1101,7 +1271,16 @@ const AdminDashboard = () => {
                         {users
                           .filter(u => u.role !== 'admin')
                           .filter(u => userFilter === 'All' || u.role.toLowerCase() === userFilter.toLowerCase())
-                          .map(u => (
+                          .filter(u => {
+                            if (!userSearch) return true;
+                            const term = userSearch.toLowerCase();
+                            return (
+                              u.name?.toLowerCase().includes(term) ||
+                              u.email?.toLowerCase().includes(term) ||
+                              (u.delegateId || '').toLowerCase().includes(term)
+                            );
+                          })
+                          .map((u, index, array) => (
                           <tr key={u._id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-8 py-6">
                               <div className="flex items-center gap-3">
@@ -1123,17 +1302,64 @@ const AdminDashboard = () => {
                               <p className="text-xs font-bold text-slate-700">{u.email}</p>
                               <p className="text-[10px] font-bold text-slate-400 mt-0.5">{u.phone || 'No phone provided'}</p>
                             </td>
-                            <td className="px-8 py-6">                               <div className="flex flex-col gap-2">
-                                 <select
-                                   value={u.role}
-                                   disabled={u._id === user._id}
-                                   onChange={(e) => handleRoleUpdate(u._id, e.target.value)}
-                                   className="appearance-none outline-none w-32 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all cursor-pointer shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] disabled:opacity-50 disabled:cursor-not-allowed bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M7%2010L12%2015L17%2010%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E')] bg-[length:14px_14px] bg-[right_12px_center] bg-no-repeat"
+                            <td className="px-8 py-6 overflow-visible">
+                               <div className="relative flex flex-col gap-2">
+                                 <button
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     setActiveUserRoleMenu(activeUserRoleMenu === u._id ? null : u._id);
+                                   }}
+                                   disabled={u._id === user._id || updatingRole}
+                                   className={`w-32 flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
+                                     activeUserRoleMenu === u._id 
+                                       ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-md' 
+                                       : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                  >
-                                   <option value="author" className="font-bold text-slate-700">Author</option>
-                                   <option value="reviewer" className="font-bold text-slate-700">Reviewer</option>
-                                   <option value="chair" className="font-bold text-slate-700">Chair</option>
-                                 </select>
+                                   <span className="truncate">{u.role}</span>
+                                   <ChevronDown size={12} className={`shrink-0 transition-transform duration-300 ${activeUserRoleMenu === u._id ? 'rotate-180' : ''}`} />
+                                 </button>
+
+                                 <AnimatePresence>
+                                   {activeUserRoleMenu === u._id && (
+                                     <>
+                                       <div className="fixed inset-0 z-[70]" onClick={() => setActiveUserRoleMenu(null)} />
+                                       <motion.div
+                                         initial={{ opacity: 0, y: (array.length - index) <= 2 ? -10 : 10, scale: 0.95 }}
+                                         animate={{ opacity: 1, y: (array.length - index) <= 2 ? -5 : 5, scale: 1 }}
+                                         exit={{ opacity: 0, y: (array.length - index) <= 2 ? -10 : 10, scale: 0.95 }}
+                                         className={`absolute left-0 ${(array.length - index) <= 2 ? 'bottom-full mb-2' : 'top-full mt-2'} z-[80] w-48 bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden p-1.5`}
+                                       >
+                                         <div className="flex flex-col gap-1">
+                                           {[
+                                             { id: 'author', label: 'Author', icon: Users },
+                                             { id: 'reviewer', label: 'Reviewer', icon: FileCheck },
+                                             { id: 'chair', label: 'Chair', icon: Shield }
+                                           ].map(role => {
+                                             const isActive = u.role === role.id;
+                                             return (
+                                               <button
+                                                 key={role.id}
+                                                 onClick={() => {
+                                                   handleRoleUpdate(u._id, role.id);
+                                                   setActiveUserRoleMenu(null);
+                                                 }}
+                                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                                                   isActive
+                                                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                     : 'text-slate-500 hover:bg-slate-50'
+                                                 }`}
+                                               >
+                                                 <role.icon size={14} className={isActive ? 'text-white' : 'text-slate-400'} />
+                                                 {role.label}
+                                               </button>
+                                             );
+                                           })}
+                                         </div>
+                                       </motion.div>
+                                     </>
+                                   )}
+                                 </AnimatePresence>
 
                                  {u.role === 'reviewer' && (
                                    <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 flex items-center justify-center gap-1.5 w-max">
@@ -1202,6 +1428,21 @@ const AdminDashboard = () => {
                         ))}
                       </tbody>
                     </table>
+                    {users.filter(u => u.role !== 'admin').filter(u => userFilter === 'All' || u.role.toLowerCase() === userFilter.toLowerCase()).filter(u => {
+                      if (!userSearch) return true;
+                      const term = userSearch.toLowerCase();
+                      return u.name?.toLowerCase().includes(term) || u.email?.toLowerCase().includes(term) || (u.delegateId || '').toLowerCase().includes(term);
+                    }).length === 0 && (
+                      <div className="py-20 text-center">
+                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">No users found matching your criteria</p>
+                         <button 
+                           onClick={() => { setUserFilter('All'); setUserSearch(''); }}
+                           className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
+                         >
+                           Clear All Searches
+                         </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -1215,16 +1456,20 @@ const AdminDashboard = () => {
                  exit={{ opacity: 0, y: -20 }}
                  className="max-w-4xl mx-auto"
                >
-                 {/* Simplified Launch Control */}
-                 <div className="flex justify-center mb-8">
-                   <button
-                     onClick={() => setIsScannerModalOpen(true)}
-                     className="group px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-3"
-                   >
-                     <ScanLine size={16} />
-                     Launch Scanner
-                   </button>
-                 </div>
+                 {/* Header Title & Launch Control */}
+                  <div className="flex justify-between items-center mb-8 bg-white/50 backdrop-blur-sm p-6 rounded-3xl border border-slate-100 shadow-sm">
+                    <div>
+                      <h3 className="text-base font-black text-slate-800 tracking-tight">On-site Entry</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Verification & Entry Management</p>
+                    </div>
+                    <button
+                      onClick={() => setIsScannerModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 hover:border-indigo-200 transition-all border border-indigo-100 shadow-sm shadow-indigo-100/20 active:scale-95"
+                    >
+                      <ScanLine size={14} />
+                      Launch Scanner
+                    </button>
+                  </div>
 
                  {/* Manifest Container */}
                  <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden h-fit relative">
@@ -1235,105 +1480,93 @@ const AdminDashboard = () => {
                         </div>
                         <h4 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">Scanner Offline</h4>
                      </div>
-                   ) : (
-                     <div className="animate-fade-in flex flex-col md:flex-row">
-                        {/* Summary Sidebar */}
-                        <div className="md:w-[240px] p-8 bg-slate-50/50 border-r border-slate-100 flex flex-col items-center justify-center text-center">
-                           <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-3xl font-black shadow-xl uppercase border-4 border-white mb-4 animate-scale-in ${scannedResult.paymentStatus === 'Completed' ? 'bg-indigo-600 text-white' : 'bg-red-600 text-white'}`}>
-                              {scannedResult.personalDetails?.name?.charAt(0)}
-                           </div>
-                           <h4 className="text-lg font-black text-slate-800 leading-tight mb-1">{scannedResult.personalDetails?.name}</h4>
-                           <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">{scannedResult.personalDetails?.category}</p>
-                           <div className="mt-6 pt-6 border-t border-slate-100 w-full">
-                              <span className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${scannedResult.paymentStatus === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
-                                 {scannedResult.paymentStatus === 'Completed' ? 'Cleared' : 'Pending'}
-                              </span>
-                           </div>
-                        </div>
+                    ) : (
+                      <div className="animate-fade-in p-8 md:p-12">
+                         <div className="max-w-xl mx-auto space-y-8">
+                            {/* Simple Profile Header */}
+                            <div className="flex items-center gap-6 pb-8 border-b border-slate-100">
+                               <div className="w-20 h-20 rounded-2xl bg-indigo-600 flex items-center justify-center text-3xl font-black text-white shadow-xl">
+                                  {scannedResult.personalDetails?.name?.charAt(0)}
+                               </div>
+                               <div>
+                                  <h4 className="text-2xl font-black text-slate-800 tracking-tight">{scannedResult.personalDetails?.name}</h4>
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">{scannedResult.userId?.delegateId || scannedResult.delegateId || 'N/A'}</p>
+                               </div>
+                            </div>
 
-                        {/* Details Focus Area */}
-                        <div className="flex-1 flex flex-col bg-white">
-                           <div className="p-6 space-y-5">
-                              {/* Paper Switcher */}
-                              {(scannedResult.otherPapers?.length > 0 || scannedResult.paperId) && (
-                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-                                    <button className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-indigo-600 text-white shadow-sm whitespace-nowrap">
-                                       {scannedResult.paperId || 'SELECTED'}
-                                    </button>
-                                    {scannedResult.otherPapers?.map((paper, idx) => (
-                                      <button key={idx} onClick={() => handleVerifyQR(paper.paperId || paper._id)} className="px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 border border-transparent hover:border-slate-200 transition-all whitespace-nowrap">
-                                        {paper.paperId || `PAPER ${idx + 2}`}
-                                      </button>
-                                    ))}
+                            {/* Essential Details */}
+                            <div className="grid grid-cols-1 gap-1">
+                               {[
+                                 { label: 'Institution', val: scannedResult.personalDetails?.institution || 'Academic Delegate' },
+                                 { label: 'Category', val: scannedResult.personalDetails?.category },
+                                 { label: 'Paper ID', val: scannedResult.paperId || (scannedResult._id ? scannedResult._id.toString().slice(-6).toUpperCase() : 'N/A') },
+                                 { label: 'Manuscript', val: scannedResult.status, color: scannedResult.status === 'Accepted' ? 'text-emerald-600' : 'text-amber-600' }
+                               ].map((item, idx) => (
+                                 <div key={idx} className="flex justify-between items-center py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 px-4 rounded-xl transition-colors">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</span>
+                                    <span className={`text-[13px] font-bold ${item.color || 'text-slate-700'} tracking-tight`}>{item.val}</span>
                                  </div>
-                              )}
+                               ))}
+                            </div>
 
-                              <div className="grid grid-cols-2 gap-3">
-                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                                    <p className="text-[10px] font-black text-slate-700 uppercase">{scannedResult.status}</p>
-                                 </div>
-                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Affiliation</p>
-                                    <p className="text-[10px] font-black text-slate-700 uppercase truncate">{scannedResult.personalDetails?.institution || 'Academic Delegate'}</p>
+                            {/* High Performance Finance Card */}
+                            {scannedResult.paymentStatus !== 'Completed' ? (
+                              <div className="mt-6 p-8 bg-slate-50 rounded-[2.5rem] border border-slate-200 relative overflow-hidden">
+                                 <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-6">
+                                       <div>
+                                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Portfolio Balance</p>
+                                          <h5 className="text-4xl font-black text-slate-800 tracking-tighter">₹{calculatePortfolioBalance(scannedResult)}</h5>
+                                       </div>
+                                       <div className="w-12 h-12 bg-white rounded-2xl border border-slate-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                                          <CreditCard size={24} />
+                                       </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                       <div className="space-y-2">
+                                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Manual Authorized Entry</label>
+                                          <div className="flex gap-2">
+                                             <div className="relative flex-1 group">
+                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm group-focus-within:text-indigo-600 transition-colors">₹</div>
+                                                <input
+                                                   type="number"
+                                                   value={manualPaymentAmount || calculateRequiredFee(scannedResult)}
+                                                   onChange={(e) => setManualPaymentAmount(e.target.value)}
+                                                   className="w-full pl-8 pr-4 py-3.5 bg-white border border-slate-100 rounded-xl font-black text-slate-800 outline-none focus:border-indigo-600 focus:ring-4 focus:ring-indigo-500/5 transition-all text-sm"
+                                                />
+                                             </div>
+                                             <button
+                                                onClick={() => handleManualPaymentConfirm(scannedResult)}
+                                                className="px-8 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-black transition-all active:scale-95 shadow-xl"
+                                             >
+                                                Pay
+                                             </button>
+                                          </div>
+                                       </div>
+                                       <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-center opacity-60">Required: ₹{calculateRequiredFee(scannedResult)}</p>
+                                    </div>
                                  </div>
                               </div>
+                            ) : (
+                               <div className="p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 flex flex-col items-center gap-2 text-emerald-700">
+                                  <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-100 mb-2">
+                                     <CheckCircle size={24} />
+                                  </div>
+                                  <span className="text-[11px] font-black uppercase tracking-[0.2em]">Entry Authorized</span>
+                                  <p className="text-[10px] font-medium opacity-60">Finance & Identity Verified</p>
+                               </div>
+                            )}
 
-                              <div className="p-4 rounded-xl border border-slate-100 bg-white shadow-sm relative overflow-hidden flex items-center justify-between">
-                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${scannedResult.paymentStatus === 'Completed' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                                 <div className="min-w-0 flex-1 ml-2">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Finance</p>
-                                    <p className={`text-base font-black ${scannedResult.paymentStatus === 'Completed' ? 'text-emerald-700' : 'text-red-700'}`}>{scannedResult.paymentStatus}</p>
-                                    {scannedResult.paperDetails?.title && (
-                                      <p className="text-[9px] font-bold text-slate-500 truncate italic mt-1 leading-none opacity-60">"{scannedResult.paperDetails.title}"</p>
-                                    )}
-                                 </div>
-                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ml-4 ${scannedResult.paymentStatus === 'Completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                                    <CreditCard size={20} />
-                                 </div>
-                              </div>
-
-                              {/* Action Manifest */}
-                              {scannedResult.paymentStatus !== 'Completed' ? (
-                                <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-xl">
-                                   <div className="flex justify-between items-center mb-3">
-                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Amount Due</p>
-                                      <h5 className="text-xl font-black font-mono">₹{calculateRequiredFee(scannedResult)}</h5>
-                                   </div>
-                                   <div className="flex gap-2">
-                                      <input
-                                         type="number"
-                                         placeholder="Amount"
-                                         value={manualPaymentAmount || calculateRequiredFee(scannedResult)}
-                                         onChange={(e) => setManualPaymentAmount(e.target.value)}
-                                         className="flex-1 px-4 py-2 bg-white/10 border border-white/10 rounded-xl font-black text-white focus:outline-none focus:border-indigo-500 text-sm"
-                                      />
-                                      <button
-                                         onClick={() => handleManualPaymentConfirm(scannedResult)}
-                                         className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-indigo-500 transition-all font-outline"
-                                      >
-                                         Authorize
-                                      </button>
-                                   </div>
-                                </div>
-                              ) : (
-                                <div className="bg-emerald-600 rounded-2xl p-4 text-white flex items-center gap-4 text-center justify-center shadow-lg shadow-emerald-50">
-                                   <CheckCircle size={20} />
-                                   <span className="text-xs font-black uppercase tracking-widest">Entry Authorized</span>
-                                </div>
-                              )}
-
-                              <button
-                                onClick={() => setScannedResult(null)}
-                                className="w-full py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-all border-t border-slate-50 mt-2"
-                              >
-                                Reset Session
-                              </button>
-                           </div>
-                        </div>
-                     </div>
+                            <button
+                              onClick={() => setScannedResult(null)}
+                              className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-red-500 transition-all border-t border-slate-50 mt-4"
+                            >
+                               Reset Session
+                            </button>
+                         </div>
+                      </div>
                    )}
-                 </div>
+                </div>
 
                  {/* Simplified Digital Scanner Popup */}
                  <AnimatePresence>

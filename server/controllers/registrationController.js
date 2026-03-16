@@ -622,17 +622,15 @@ const verifyEntry = async (req, res) => {
         const otherPapers = await Registration.find({ 
             userId: registration.userId._id || registration.userId,
             _id: { $ne: registration._id } 
-        }).select('paperId paperDetails.title status paymentStatus');
+        }).select('paperId paperDetails.title status paymentStatus personalDetails.category teamMembers.category');
 
         if (registration.status !== 'Accepted') {
             return res.status(400).json({
+                ...registration.toObject(),
                 message: registration.status === 'Draft'
                     ? 'Submission Incomplete. Author must submit paper details.'
                     : `Manuscript status is ${registration.status}. It must be "Accepted" before verification.`,
-                status: registration.status,
-                personalDetails: registration.personalDetails,
-                paperDetails: registration.paperDetails,
-                otherPapers: otherPapers // Still send other papers even on error
+                otherPapers: otherPapers
             });
         }
 

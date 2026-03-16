@@ -71,7 +71,7 @@ const broadcastNotification = async (req, res) => {
 // @access  Admin
 const exportRegistrations = async (req, res) => {
     try {
-        const registrations = await Registration.find({}).populate('userId', 'name email phone');
+        const registrations = await Registration.find({}).populate('userId', 'name email phone delegateId');
 
         const csvData = registrations.map(reg => {
             const data = {

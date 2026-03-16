@@ -1,4 +1,4 @@
-const express = require('express'); // Triggering reload
+const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
@@ -29,8 +29,7 @@ app.use(helmet({
 }));
 app.use(compression({
     filter: (req, res) => {
-        // Broadly disable compression for all API routes, especially downloads,
-        // to prevent double-compression or corruption of binary streams/buffers
+        // Skip compression for API routes to prevent binary corruption (e.g., downloads)
         if (req.path.startsWith('/api')) {
             return false;
         }
@@ -86,10 +85,6 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 
-app.get('/api/debug/ping', (req, res) => {
-    res.json({ message: 'pong', version: '1.2.0-debug', timestamp: new Date() });
-});
-
 app.use('/api/auth', authRoutes);
 app.use('/api/registrations', registrationRoutes);
 app.use('/api/payments', paymentRoutes);
@@ -113,18 +108,12 @@ if (fs.existsSync(clientDistPath)) {
 
 // SPA Fallback & 404 Handler
 app.use((req, res, next) => {
-    // SPA Fallback: Send index.html for GET requests that are NOT API calls and NOT download links
-    const isApiRequest = req.path.startsWith('/api') || req.path.includes('/download');
+    // SPA Fallback: Send index.html for GET requests that are NOT API calls
+    const isApiRequest = req.path.startsWith('/api');
     
     if (fs.existsSync(clientDistPath) && req.method === 'GET' && !isApiRequest) {
-        console.log(`[SPA Fallback] Serving index.html for: ${req.path}`);
         return res.sendFile(path.resolve(clientDistPath, 'index.html'));
     }
-    
-    if (isApiRequest) {
-        console.log(`[API Fallback] No route matched for ${req.method} ${req.path}. Proceeding to 404.`);
-    }
-    
     next();
 });
 

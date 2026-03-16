@@ -270,7 +270,6 @@ const reviewPaper = async (req, res) => {
 
 
 const downloadPaper = async (req, res) => {
-    console.log(`[Controller] downloadPaper started for ID: ${req.params.id} by User: ${req.user?.email}`);
     try {
         const { id } = req.params;
         let registration;
@@ -312,7 +311,6 @@ const downloadPaper = async (req, res) => {
 
         // Generate the URL to fetch from Cloudinary
         const secureUrl = registration.paperDetails.fileUrl.replace('http://', 'https://');
-        console.log(`[Download] Fetching into buffer from: ${secureUrl}`);
 
         // Fetch the entire file into an in-memory BUFFER (not a stream).
         // This approach is immune to Express compression/middleware wrapping and
@@ -351,7 +349,6 @@ const downloadPaper = async (req, res) => {
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
 
-        console.log(`[Download] Sending buffer (${fileBuffer.length} bytes) for ${paperID}.${extension}`);
         return res.status(200).end(fileBuffer, 'binary');
 
     } catch (error) {
@@ -485,7 +482,6 @@ const updateRegistrationStatus = async (req, res) => {
 // @route   GET /api/registrations/download-all
 // @access  Admin
 const downloadAllPapersZip = async (req, res) => {
-    console.log(`[Controller] downloadAllPapersZip started for User: ${req.user?.email}`);
     try {
         const registrations = await Registration.find({
             'paperDetails.fileUrl': { $exists: true, $ne: '' },

@@ -305,40 +305,52 @@ const downloadPaper = async (req, res) => {
         }
 
         const paperID = registration.paperId || `CIETM-${registration._id.toString().slice(-6).toUpperCase()}`;
+        const basename = paperID;
 
         // Get extension from originalName or default to docx
         const originalName = registration.paperDetails.originalName || '';
-        const ext = originalName.includes('.') ? originalName.split('.').pop().toLowerCase() : 'docx';
-        const downloadFilename = `${paperID}.${ext}`;
+        const extension = originalName.split('.').pop() || 'docx';
 
-        // --- FIX: Use Cloudinary signed URL redirect instead of proxying ---
-        // This bypasses the Nginx reverse proxy buffering issue on production.
-        // The browser downloads directly from Cloudinary CDN.
-        const publicId = registration.paperDetails.publicId;
+        // Generate the URL to fetch from Cloudinary
+        const secureUrl = registration.paperDetails.fileUrl.replace('http://', 'https://');
 
-        if (publicId) {
-            // Generate a short-lived signed URL (60 seconds) that forces download
-            const signedUrl = cloudinary.utils.private_download_url(
-                publicId,
-                ext,
-                {
-                    resource_type: 'raw',
-                    expires_at: Math.floor(Date.now() / 1000) + 60,
-                    attachment: downloadFilename
-                }
-            );
-            console.log(`[Download] Redirecting to Cloudinary signed URL for publicId: ${publicId}`);
-            return res.redirect(302, signedUrl);
+        // Fetch and stream to guarantee filename (browser redirects often lose filename context)
+        console.log(`[Download] Fetching from storage: ${secureUrl}`);
+        const response = await axios({
+            method: 'get',
+            url: secureUrl,
+            responseType: 'stream',
+            timeout: 30000 // Increased timeout for larger files
+        });
+
+        if (response.status !== 200) {
+            console.error(`[Download] Storage server returned status ${response.status}`);
+            return res.status(404).send('Resource not available on storage server');
         }
 
-        // --- Fallback: Direct redirect to stored fileUrl ---
-        // Used if publicId is missing (older records). Less ideal but avoids proxy issue.
-        const secureUrl = registration.paperDetails.fileUrl.replace('http://', 'https://');
-        console.log(`[Download] No publicId found, falling back to direct URL redirect: ${secureUrl}`);
-        return res.redirect(302, secureUrl);
+        // Set headers to force download and prevent buffering/caching
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${basename}.${extension}"`);
+        res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx buffering
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        response.data.pipe(res);
+
+        response.data.on('error', (err) => {
+            console.error('[Download] Stream error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ message: 'Error streaming file' });
+            }
+        });
 
     } catch (error) {
         console.error('Download Error:', error.message);
+        if (error.response) {
+            console.error('Storage Server Error Response:', error.response.status, error.response.statusText);
+        }
+        
         if (!res.headersSent) {
             res.status(500).json({ message: 'Error processing download request' });
         }

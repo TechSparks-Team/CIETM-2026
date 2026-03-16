@@ -14,6 +14,7 @@ import SubmissionFormSingle from '../components/SubmissionFormSingle';
 import DashboardSkeleton from '../components/DashboardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'react-qr-code';
+import { downloadFile } from '../utils/downloadHelper';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -160,16 +161,26 @@ const Dashboard = () => {
     }
   };
 
-  const handleDownload = (regId) => {
+  const handleDownload = async (regId) => {
     const targetId = regId || activeRegistrationId;
     if (!targetId) return;
-    // Open the download route with token in query for authentication
-    window.open(`/api/registrations/download/${targetId}?token=${user.token}`, '_blank');
-    
-    // Auto-refresh if the paper was just submitted
+
     const reg = registrations.find(r => r._id === targetId);
-    if (reg?.status === 'Submitted') {
-      setTimeout(fetchRegistration, 2000);
+    const paperId = reg?.paperId || targetId.slice(-6).toUpperCase();
+    const ext = reg?.paperDetails?.originalName?.split('.').pop() || 'docx';
+    const filename = `${paperId}.${ext}`;
+
+    const loadingToast = toast.loading('Preparing download...');
+    try {
+      await downloadFile(`/api/registrations/download/${targetId}`, filename, user.token);
+      toast.success('Download started!', { id: loadingToast });
+
+      // Auto-refresh if the paper was just submitted
+      if (reg?.status === 'Submitted') {
+        setTimeout(fetchRegistration, 2000);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Download failed. Please try again.', { id: loadingToast });
     }
   };
 

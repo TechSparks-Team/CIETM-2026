@@ -12,6 +12,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import DashboardSkeleton from '../components/DashboardSkeleton';
+import { downloadFile } from '../utils/downloadHelper';
 
 const ReviewerDashboard = () => {
   const { user, logout } = useAuth();
@@ -467,20 +468,26 @@ const ReviewerDashboard = () => {
                            </td>
                            <td className="px-6 py-4 text-right">
                              <div className="flex justify-end gap-2">
-                                 <a 
-                                    href={`/api/registrations/download/${reg._id}?token=${user.token}`} 
-                                    className="p-2 bg-white text-slate-400 hover:text-indigo-600 rounded-lg transition-all shadow-sm border border-slate-100"
-                                    title="Download Manuscript"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={() => {
-                                      if (reg.status === 'Submitted') {
-                                        setTimeout(fetchData, 2000);
+                                 <button
+                                    onClick={async () => {
+                                      const paperId = reg.paperId || reg._id.slice(-6).toUpperCase();
+                                      const ext = reg.paperDetails?.originalName?.split('.').pop() || 'docx';
+                                      const loadingToast = toast.loading('Preparing download…');
+                                      try {
+                                        await downloadFile(`/api/registrations/download/${reg._id}`, `${paperId}.${ext}`, user.token);
+                                        toast.success('Download started!', { id: loadingToast });
+                                        if (reg.status === 'Submitted') {
+                                          setTimeout(fetchData, 2000);
+                                        }
+                                      } catch (err) {
+                                        toast.error(err.message || 'Download failed', { id: loadingToast });
                                       }
                                     }}
+                                    className="p-2 bg-white text-slate-400 hover:text-indigo-600 rounded-lg transition-all shadow-sm border border-slate-100"
+                                    title="Download Manuscript"
                                  >
                                    <Download size={16} />
-                                </a>
+                                </button>
                                <button 
                                  onClick={() => handleReviewToggle(reg)} 
                                  className={`p-2 rounded-lg transition-all shadow-sm border ${expandedRow === reg._id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-100 hover:border-indigo-600'}`} 

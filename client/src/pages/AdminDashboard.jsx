@@ -20,6 +20,7 @@ import * as XLSX from 'xlsx';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { ShieldCheck, QrCode, ScanLine, Menu, X, CheckSquare, Square } from 'lucide-react';
 import { CONFERENCE_TRACKS, CATEGORY_AMOUNTS } from '../constants/conferenceData';
+import { downloadFile } from '../utils/downloadHelper';
 
 const QRScanner = React.memo(({ onScan }) => {
   useEffect(() => {
@@ -643,25 +644,13 @@ const AdminDashboard = () => {
             <button
               title="Download All Manuscripts (ZIP)"
               onClick={async () => {
-                const toastId = toast.loading("Preparing archive, please wait...");
+                const toastId = toast.loading('Preparing bulk archive…');
                 try {
-                  const response = await fetch(`/api/registrations/download-all?token=${user.token}`);
-                  if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.message || `Server error: ${response.status}`);
-                  }
-                  const blob = await response.blob();
-                  const blobUrl = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = blobUrl;
-                  link.download = `CIETM_Archive_${new Date().toISOString().split('T')[0]}.zip`;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(blobUrl);
-                  toast.success("Archive downloaded successfully!", { id: toastId });
+                  const filename = `CIETM_Archive_${new Date().toISOString().split('T')[0]}.zip`;
+                  await downloadFile('/api/registrations/download-all', filename, user.token);
+                  toast.success('Archive downloaded!', { id: toastId });
                 } catch (err) {
-                  toast.error(`Download failed: ${err.message}`, { id: toastId });
+                  toast.error(err.message || 'ZIP download failed', { id: toastId });
                 }
               }}
               className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2"
@@ -1962,14 +1951,22 @@ const AdminDashboard = () => {
                         <div>
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 pl-1">Manuscript File</p>
                           {selectedReg.paperDetails?.fileUrl ? (
-                            <a
-                              href={`/api/registrations/download/${selectedReg._id}?token=${user.token}`}
-                              target="_blank" rel="noreferrer"
-                              className="flex items-center justify-between gap-3 bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition-all group"
+                            <button
+                              onClick={async () => {
+                                const paperId = selectedReg.paperId || selectedReg._id.slice(-6).toUpperCase();
+                                const ext = selectedReg.paperDetails?.originalName?.split('.').pop() || 'docx';
+                                const loadingToast = toast.loading('Preparing download…');
+                                try {
+                                  await downloadFile(`/api/registrations/download/${selectedReg._id}`, `${paperId}.${ext}`, user.token);
+                                  toast.success('Download started!', { id: loadingToast });
+                                } catch (err) {
+                                  toast.error(err.message || 'Download failed', { id: loadingToast });
+                                }
+                              }}
+                              className="flex items-center justify-between gap-3 bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 transition-all group w-full"
                             >
                               <span className="text-xs font-black uppercase flex items-center gap-2 tracking-widest"><Download size={14} /> Download Word Doc</span>
-                              <ExternalLink size={14} className="opacity-60 group-hover:opacity-100" />
-                            </a>
+                            </button>
                           ) : (
                             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 uppercase text-center tracking-widest italic">No File Uploaded Yet</div>
                           )}

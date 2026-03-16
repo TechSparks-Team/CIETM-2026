@@ -12,7 +12,11 @@
  * @param {string} token     - JWT token to send as Bearer auth header.
  */
 export const downloadFile = async (url, filename, token) => {
-  const response = await fetch(url, {
+  // Prepend the base URL if it's set in VITE_API_URL (used for separate frontend/backend hosting)
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const finalUrl = url.startsWith('http') ? url : `${apiUrl}${url}`;
+
+  const response = await fetch(finalUrl, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,

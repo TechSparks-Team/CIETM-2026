@@ -28,13 +28,11 @@ app.use(helmet({
     contentSecurityPolicy: false,
 }));
 app.use(compression({
-    // Skip compression for file download routes — piping binary streams through
-    // compression middleware corrupts the response on production Nginx setups
     filter: (req, res) => {
-        if (
-            req.path.startsWith('/api/registrations/download')
-        ) {
-            return false; // Do not compress — let the binary data pass through raw
+        // Broadly disable compression for all API routes, especially downloads,
+        // to prevent double-compression or corruption of binary streams/buffers
+        if (req.path.startsWith('/api')) {
+            return false;
         }
         return compression.filter(req, res);
     }

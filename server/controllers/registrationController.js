@@ -339,16 +339,19 @@ const downloadPaper = async (req, res) => {
         const contentType = mimeTypes[extension] || response.headers['content-type'] || 'application/octet-stream';
 
         // Send complete buffer — Express will set Content-Length automatically, satisfying Nginx
+        // Explicitly set headers to prevent any middleware from touching the binary data
         res.setHeader('Content-Type', contentType);
         res.setHeader('Content-Disposition', `attachment; filename="${paperID}.${extension}"`);
         res.setHeader('Content-Length', fileBuffer.length);
+        res.setHeader('Content-Encoding', 'identity'); // Explicitly tell Nginx/Broswer NOT to compress
+        res.setHeader('X-Content-Type-Options', 'nosniff'); // Prevent browser from guessing content
         res.setHeader('X-Accel-Buffering', 'no');
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, no-transform');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
 
         console.log(`[Download] Sending buffer (${fileBuffer.length} bytes) for ${paperID}.${extension}`);
-        return res.send(fileBuffer);
+        return res.status(200).end(fileBuffer, 'binary');
 
     } catch (error) {
         console.error('[Download] Error:', error.message);
@@ -511,12 +514,14 @@ const downloadAllPapersZip = async (req, res) => {
         // Set headers immediately to tell the browser/proxy this is a streaming download
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename=CIETM_Archive_${new Date().toISOString().split('T')[0]}.zip`);
+        res.setHeader('Content-Encoding', 'identity');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('X-Accel-Buffering', 'no'); 
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, no-transform');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
 
-        const archive = archiver('zip', { zlib: { level: 1 } }); // Minimum compression = Maximum speed
+        const archive = archiver('zip', { zlib: { level: 0 } }); // No compression to avoid conflicts with external proxies
 
         archive.on('error', (err) => {
             console.error('[ZIP Archiver Error]', err);

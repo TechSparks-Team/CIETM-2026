@@ -270,6 +270,7 @@ const reviewPaper = async (req, res) => {
 
 
 const downloadPaper = async (req, res) => {
+    console.log(`[Controller] downloadPaper started for ID: ${req.params.id} by User: ${req.user?.email}`);
     try {
         const { id } = req.params;
         let registration;
@@ -484,6 +485,7 @@ const updateRegistrationStatus = async (req, res) => {
 // @route   GET /api/registrations/download-all
 // @access  Admin
 const downloadAllPapersZip = async (req, res) => {
+    console.log(`[Controller] downloadAllPapersZip started for User: ${req.user?.email}`);
     try {
         const registrations = await Registration.find({
             'paperDetails.fileUrl': { $exists: true, $ne: '' },

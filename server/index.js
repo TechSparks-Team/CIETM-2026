@@ -113,8 +113,14 @@ app.use((req, res, next) => {
     const isApiRequest = req.path.startsWith('/api') || req.path.includes('/download');
     
     if (fs.existsSync(clientDistPath) && req.method === 'GET' && !isApiRequest) {
+        console.log(`[SPA Fallback] Serving index.html for: ${req.path}`);
         return res.sendFile(path.resolve(clientDistPath, 'index.html'));
     }
+    
+    if (isApiRequest) {
+        console.log(`[API Fallback] No route matched for ${req.method} ${req.path}. Proceeding to 404.`);
+    }
+    
     next();
 });
 

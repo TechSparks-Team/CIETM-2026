@@ -25,12 +25,11 @@ const Navbar = () => {
     };
 
     // Intersection Observer for highlighting sections
-    // We use IDs directly for observation
-    const sectionIds = ['hero', 'about-conference', 'conference', 'tracks', 'speakers', 'about', 'developers'];
+    const sectionIds = ['hero', 'about-conference', 'conference', 'tracks', 'patrons', 'speakers', 'advisory-board', 'organizing-team', 'about', 'developers'];
     
     const observerOptions = {
       root: null,
-      rootMargin: '-40% 0px -40% 0px', // Detect when middle of section is in middle of viewport
+      rootMargin: '-40% 0px -40% 0px',
       threshold: 0
     };
 
@@ -38,12 +37,22 @@ const Navbar = () => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const id = `#${entry.target.id}`;
-          // Map sub-sections to their parent nav links if necessary
-          if (id === '#about-conference') {
-            setActiveSection('#hero');
-          } else {
-            setActiveSection(id);
-          }
+          
+          // Mapping sub-sections to their parent navigation links
+          const sectionMapping = {
+            '#hero': '#hero',
+            '#about-conference': '#about-conference',
+            '#conference': '#conference',
+            '#tracks': '#tracks',
+            '#speakers': '#speakers',
+            '#patrons': '#patrons',
+            '#advisory-board': '#patrons', // Highlight Committees
+            '#organizing-team': '#patrons', // Highlight Committees
+            '#about': '#about',
+            '#developers': '#developers'
+          };
+
+          setActiveSection(sectionMapping[id] || id);
         }
       });
     }, observerOptions);
@@ -100,10 +109,12 @@ const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', href: '#hero' },
-    { name: 'Conference', href: '#conference' },
+    { name: 'Themes', href: '#about-conference' },
+    { name: 'Guidelines', href: '#conference' },
     { name: 'Tracks', href: '#tracks' },
     { name: 'Speakers', href: '#speakers' },
-    { name: 'About College', href: '#about' },
+    { name: 'Committees', href: '#patrons' },
+    { name: 'Institute', href: '#about' },
     { name: 'Developers', href: '#developers' }
   ];
   const getDashboardLink = () => {
@@ -154,7 +165,7 @@ const Navbar = () => {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden lg:flex items-center gap-4">
           <div className="flex items-center gap-1">
             {navLinks.filter(item => isHome || item.name === 'Home').map((item) => {
               const isActive = isHome ? activeSection === item.href : false;
@@ -163,7 +174,7 @@ const Navbar = () => {
                 key={item.name} 
                 href={item.href} 
                 onClick={(e) => { e.preventDefault(); scrollToSection(item.href); }}
-                className={`relative px-4 py-2 text-sm font-bold tracking-wide transition-all duration-300 group ${
+                className={`relative px-3 py-2 text-sm font-bold tracking-tight transition-all duration-300 group ${
                   isActive 
                     ? 'text-indigo-600' 
                     : `${textColorClass} hover:text-indigo-500`
@@ -182,7 +193,7 @@ const Navbar = () => {
             )})}
           </div>
           
-          <div className="flex items-center gap-4 pl-6 border-l border-slate-200 transition-colors duration-500">
+          <div className="flex items-center gap-3 pl-4 border-l border-slate-200 transition-colors duration-500">
             {user ? (
               <div className="flex items-center gap-3">
                 <Link 
@@ -223,7 +234,7 @@ const Navbar = () => {
         {/* Mobile Toggle */}
         <motion.div 
           whileTap={{ scale: 0.9 }}
-          className="md:hidden z-50 cursor-pointer text-slate-800 p-2.5 bg-slate-100/80 backdrop-blur-md rounded-xl border border-white shadow-sm"
+          className="lg:hidden z-50 cursor-pointer text-slate-800 p-2.5 bg-slate-100/80 backdrop-blur-md rounded-xl border border-white shadow-sm"
           onClick={() => setIsOpen(!isOpen)}
         >
           {isOpen ? <X size={20} /> : <Menu size={20} />}
@@ -238,7 +249,7 @@ const Navbar = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute top-full left-0 right-0 bg-white border-b border-slate-200 shadow-2xl md:hidden z-50 transform-gpu"
+            className="absolute top-full left-0 right-0 bg-white border-b border-slate-200 shadow-2xl lg:hidden z-50 transform-gpu"
           >
             <div className="p-6 flex flex-col gap-2 bg-white">
               <div className="flex flex-col gap-1 mb-6">

@@ -522,6 +522,65 @@ const HomePage = () => {
         </div>
       </section>
 
+      {/* Speakers Section */}
+      <section id="speakers" className="py-12 md:py-20 bg-white">
+        <div className="w-full max-w-7xl mx-auto px-6">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <span className="inline-block px-5 py-2 rounded-full bg-indigo-50 text-indigo-600 font-extrabold text-xs tracking-widest uppercase mb-5">Experts</span>
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900 tracking-tight">Keynote <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Speakers</span></h2>
+            <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Meet the visionary leaders sharing their insights at CIETM 2026.</p>
+          </div>
+
+          <div className="relative max-w-6xl mx-auto py-6 group overflow-hidden">
+            {speakers.length > 4 ? (
+              <>
+                {/* Fading Edges Mask */}
+                <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+                <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+
+                <motion.div
+                  drag="x"
+                  dragConstraints={{ left: -2000, right: 2000 }}
+                  className="flex gap-8 cursor-grab active:cursor-grabbing"
+                  style={{
+                    animation: `scroll ${duration}s linear infinite`,
+                    animationPlayState: isSpeakersPaused ? 'paused' : 'running',
+                    width: 'max-content'
+                  }}
+                  onMouseEnter={() => setIsSpeakersPaused(true)}
+                  onMouseLeave={() => setIsSpeakersPaused(false)}
+                  onClick={() => setIsSpeakersPaused(!isSpeakersPaused)}
+                  onDragStart={() => setIsSpeakersPaused(true)}
+                  onDragEnd={() => setIsSpeakersPaused(false)}
+                >
+                  {/* 3 sets for smooth infinity scroll */}
+                  {[...speakers, ...speakers, ...speakers].map((s, i) => (
+                    <SpeakerCard key={i} s={s} width="w-[220px] shrink-0" />
+                  ))}
+                </motion.div>
+              </>
+            ) : (
+              <div className={`grid gap-6 justify-center items-stretch mx-auto ${
+                speakers.length === 1 ? 'max-w-md grid-cols-1' :
+                speakers.length === 2 ? 'max-w-2xl grid-cols-1 sm:grid-cols-2' :
+                speakers.length === 3 ? 'max-w-3xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+                'max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+              }`}>
+                {speakers.map((s, i) => (
+                  <SpeakerCard key={i} s={s} />
+                ))}
+              </div>
+            )}
+          </div>
+          <style>{`
+            @keyframes scroll {
+                0% { transform: translateX(calc(-100% / 3)); }
+                100% { transform: translateX(0); }
+            }
+          `}</style>
+        </div>
+      </section>
+
       {/* Patrons Section */}
       <section id="patrons" className="pt-12 pb-16 md:pt-16 md:pb-24 relative bg-white overflow-hidden">
         {/* Mesh Backgrounds */}
@@ -622,64 +681,7 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Speakers Section */}
-      <section id="speakers" className="py-12 md:py-20 bg-white">
-        <div className="w-full max-w-7xl mx-auto px-6">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <span className="inline-block px-5 py-2 rounded-full bg-indigo-50 text-indigo-600 font-extrabold text-xs tracking-widest uppercase mb-5">Experts</span>
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-slate-900 tracking-tight">Keynote <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">Speakers</span></h2>
-            <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto">Meet the visionary leaders sharing their insights at CIETM 2026.</p>
-          </div>
 
-          <div className="relative max-w-6xl mx-auto py-6 group overflow-hidden">
-            {speakers.length > 4 ? (
-              <>
-                {/* Fading Edges Mask */}
-                <div className="absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
-                <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
-
-                <motion.div
-                  drag="x"
-                  dragConstraints={{ left: -2000, right: 2000 }}
-                  className="flex gap-8 cursor-grab active:cursor-grabbing"
-                  style={{
-                    animation: `scroll ${duration}s linear infinite`,
-                    animationPlayState: isSpeakersPaused ? 'paused' : 'running',
-                    width: 'max-content'
-                  }}
-                  onMouseEnter={() => setIsSpeakersPaused(true)}
-                  onMouseLeave={() => setIsSpeakersPaused(false)}
-                  onClick={() => setIsSpeakersPaused(!isSpeakersPaused)}
-                  onDragStart={() => setIsSpeakersPaused(true)}
-                  onDragEnd={() => setIsSpeakersPaused(false)}
-                >
-                  {/* 3 sets for smooth infinity scroll */}
-                  {[...speakers, ...speakers, ...speakers].map((s, i) => (
-                    <SpeakerCard key={i} s={s} width="w-[220px] shrink-0" />
-                  ))}
-                </motion.div>
-              </>
-            ) : (
-              <div className={`grid gap-6 justify-center items-stretch mx-auto ${
-                speakers.length === 1 ? 'max-w-md grid-cols-1' :
-                speakers.length === 2 ? 'max-w-2xl grid-cols-1 sm:grid-cols-2' :
-                speakers.length === 3 ? 'max-w-3xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
-                'max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-              }`}>
-                {speakers.map((s, i) => (
-                  <SpeakerCard key={i} s={s} />
-                ))}
-              </div>
-            )}
-          </div>
-          <style>{`
-            @keyframes scroll {
-                0% { transform: translateX(calc(-100% / 3)); }
-                100% { transform: translateX(0); }
-            }
-          `}</style>
-        </div>
-      </section>
 
       {/* Advisory Board Section */}
       <section id="advisory-board" className="py-12 md:py-20 bg-slate-50">

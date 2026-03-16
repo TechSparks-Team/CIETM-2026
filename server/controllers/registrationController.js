@@ -274,6 +274,7 @@ const downloadPaper = async (req, res) => {
         const { id } = req.params;
         let registration;
 
+        // Use ID for all roles to ensure correct document is retrieved
         if (req.user.role === 'admin' || req.user.role === 'chair') {
             registration = await Registration.findById(id);
         } else if (req.user.role === 'reviewer') {
@@ -285,17 +286,22 @@ const downloadPaper = async (req, res) => {
                 ]
             });
         } else {
-            registration = await Registration.findOne({ userId: req.user._id });
+            // Author role: Filter by ID AND Ownership
+            registration = await Registration.findOne({ _id: id, userId: req.user._id });
         }
 
         if (!registration || !registration.paperDetails.fileUrl) {
+            console.warn(`[Download] Paper not found or unauthorized. ID: ${id}, User: ${req.user.email}`);
             return res.status(404).json({ message: 'Paper not found or unauthorized' });
         }
 
-        // Auto-update status from Submitted to Under Review when downloaded
-        if (registration.status === 'Submitted') {
+        // Auto-update status from Submitted to Under Review ONLY when downloaded by Reviewer/Admin/Chair
+        // Do not update status if the author themselves downloads it
+        const isOwner = registration.userId.toString() === req.user._id.toString();
+        if (registration.status === 'Submitted' && !isOwner) {
             registration.status = 'Under Review';
             await registration.save();
+            console.log(`[Download] Transitioned paper ${registration.paperId} to Under Review`);
         }
 
         const paperID = registration.paperId || `CIETM-${registration._id.toString().slice(-6).toUpperCase()}`;
@@ -305,32 +311,49 @@ const downloadPaper = async (req, res) => {
         const originalName = registration.paperDetails.originalName || '';
         const extension = originalName.split('.').pop() || 'docx';
 
-        // Determine resource type
-        const isWordDoc = ['doc', 'docx'].includes(extension.toLowerCase());
-        const resourceType = isWordDoc ? 'raw' : (registration.paperDetails.resourceType || 'raw');
-
         // Generate the URL to fetch from Cloudinary
         const secureUrl = registration.paperDetails.fileUrl.replace('http://', 'https://');
 
         // Fetch and stream to guarantee filename (browser redirects often lose filename context)
+        console.log(`[Download] Fetching from storage: ${secureUrl}`);
         const response = await axios({
             method: 'get',
             url: secureUrl,
             responseType: 'stream',
-            timeout: 20000
+            timeout: 30000 // Increased timeout for larger files
         });
 
         if (response.status !== 200) {
+            console.error(`[Download] Storage server returned status ${response.status}`);
             return res.status(404).send('Resource not available on storage server');
         }
 
+        // Set headers to force download and prevent buffering/caching
         res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
         res.setHeader('Content-Disposition', `attachment; filename="${basename}.${extension}"`);
+        res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx buffering
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
         
         response.data.pipe(res);
+
+        response.data.on('error', (err) => {
+            console.error('[Download] Stream error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ message: 'Error streaming file' });
+            }
+        });
+
     } catch (error) {
-        console.error('Download Error:', error);
-        res.status(500).json({ message: 'Error processing download request' });
+        console.error('Download Error:', error.message);
+        if (error.response) {
+            console.error('Storage Server Error Response:', error.response.status, error.response.statusText);
+        }
+        
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Error processing download request' });
+        }
     }
 };
 

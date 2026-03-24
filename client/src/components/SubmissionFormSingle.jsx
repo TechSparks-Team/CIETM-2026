@@ -192,36 +192,6 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
           </div>
           <div className="space-y-4">
             <div>
-                <label className={labelClass}>{formData.category === 'INDUSTRY PERSONNEL' ? 'Organization *' : 'Institution *'}</label>
-                <select 
-                    name="institution" 
-                    value={hostColleges.includes(formData.institution) ? formData.institution : 'External'} 
-                    onChange={(e) => {
-                        if (e.target.value === 'External') setFormData({...formData, institution: ''});
-                        else setFormData({...formData, institution: e.target.value});
-                    }}
-                    className={inputClass}
-                >
-                    {hostColleges.map(c => <option key={c} value={c}>{c}</option>)}
-                    <option value="External">Other Institution...</option>
-                </select>
-                {!hostColleges.includes(formData.institution) && (
-                    <input 
-                        className={inputClass + " mt-2 border-indigo-200 bg-white"} 
-                        value={formData.institution} 
-                        onChange={(e) => setFormData({...formData, institution: e.target.value})}
-                        placeholder="Type institution name..."
-                    />
-                )}
-            </div>
-            <div>
-              <label className={labelClass}>{formData.category === 'INDUSTRY PERSONNEL' ? 'Vertical & Designation *' : 'Department & Designation *'}</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input name="department" value={formData.department} onChange={handleChange} className={inputClass} placeholder={formData.category === 'INDUSTRY PERSONNEL' ? 'Vertical' : 'Department'} />
-                <input name="designation" value={formData.designation} onChange={handleChange} className={inputClass} placeholder="Designation" />
-              </div>
-            </div>
-            <div>
               <label className={labelClass}>Category & Specialization *</label>
               <div className={`grid gap-3 ${formData.category === 'UG/PG STUDENTS' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 <select name="category" value={formData.category} onChange={handleChange} className={inputClass}>
@@ -231,6 +201,48 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
                   <input name="yearOfStudy" value={formData.yearOfStudy} onChange={handleChange} className={inputClass} placeholder="Year/Course" />
                 )}
                 <input name="areaOfSpecialization" value={formData.areaOfSpecialization} onChange={handleChange} className={inputClass} placeholder="Specialization" />
+              </div>
+            </div>
+            <div>
+                <label className={labelClass}>{formData.category === 'INDUSTRY PERSONNEL' ? 'Organization *' : 'Institution *'}</label>
+                {formData.category === 'INDUSTRY PERSONNEL' ? (
+                    <input 
+                        name="institution"
+                        className={inputClass} 
+                        value={formData.institution} 
+                        onChange={handleChange}
+                        placeholder="Enter organization name..."
+                    />
+                ) : (
+                    <>
+                        <select 
+                            name="institution" 
+                            value={hostColleges.includes(formData.institution) ? formData.institution : 'External'} 
+                            onChange={(e) => {
+                                if (e.target.value === 'External') setFormData({...formData, institution: ''});
+                                else setFormData({...formData, institution: e.target.value});
+                            }}
+                            className={inputClass}
+                        >
+                            {hostColleges.map(c => <option key={c} value={c}>{c}</option>)}
+                            <option value="External">Other Institution...</option>
+                        </select>
+                        {!hostColleges.includes(formData.institution) && (
+                            <input 
+                                className={inputClass + " mt-2 border-indigo-200 bg-white"} 
+                                value={formData.institution} 
+                                onChange={(e) => setFormData({...formData, institution: e.target.value})}
+                                placeholder="Type institution name..."
+                            />
+                        )}
+                    </>
+                )}
+            </div>
+            <div>
+              <label className={labelClass}>{formData.category === 'INDUSTRY PERSONNEL' ? 'Vertical & Designation *' : 'Department & Designation *'}</label>
+              <div className="grid grid-cols-2 gap-3">
+                <input name="department" value={formData.department} onChange={handleChange} className={inputClass} placeholder={formData.category === 'INDUSTRY PERSONNEL' ? 'Vertical' : 'Department'} />
+                <input name="designation" value={formData.designation} onChange={handleChange} className={inputClass} placeholder="Designation" />
               </div>
             </div>
           </div>
@@ -321,24 +333,35 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
                 </div>
                 <div className="md:col-span-2">
                   <label className={labelClass}>{member.category === 'INDUSTRY PERSONNEL' ? 'Organization' : 'Institution'}</label>
-                  <select 
-                    value={hostColleges.includes(member.affiliation) ? member.affiliation : 'External'} 
-                    onChange={(e) => {
-                        if (e.target.value === 'External') updateTeamMember(idx, 'affiliation', '');
-                        else updateTeamMember(idx, 'affiliation', e.target.value);
-                    }}
-                    className={inputClass}
-                  >
-                        {hostColleges.map(c => <option key={c} value={c}>{c}</option>)}
-                        <option value="External">Other Institution...</option>
-                  </select>
-                  {!hostColleges.includes(member.affiliation) && (
+                  {member.category === 'INDUSTRY PERSONNEL' ? (
                     <input 
-                        className={inputClass + " mt-2 border-indigo-200 bg-white"} 
+                        className={inputClass} 
                         value={member.affiliation} 
                         onChange={(e) => updateTeamMember(idx, 'affiliation', e.target.value)}
-                        placeholder="Type institution name..."
+                        placeholder="Organization Name"
                     />
+                  ) : (
+                    <>
+                      <select 
+                        value={hostColleges.includes(member.affiliation) ? member.affiliation : 'External'} 
+                        onChange={(e) => {
+                            if (e.target.value === 'External') updateTeamMember(idx, 'affiliation', '');
+                            else updateTeamMember(idx, 'affiliation', e.target.value);
+                        }}
+                        className={inputClass}
+                      >
+                            {hostColleges.map(c => <option key={c} value={c}>{c}</option>)}
+                            <option value="External">Other Institution...</option>
+                      </select>
+                      {!hostColleges.includes(member.affiliation) && (
+                        <input 
+                            className={inputClass + " mt-2 border-indigo-200 bg-white"} 
+                            value={member.affiliation} 
+                            onChange={(e) => updateTeamMember(idx, 'affiliation', e.target.value)}
+                            placeholder="Type institution name..."
+                        />
+                      )}
+                    </>
                   )}
                 </div>
                 <div>

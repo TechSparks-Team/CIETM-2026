@@ -419,11 +419,6 @@ const Dashboard = () => {
         <div>
           <p className="text-sm font-bold text-slate-500">Welcome back, <span className="text-indigo-600">{user.name}</span>. Here is your conference summary.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => { setIsAddingNew(true); setActiveTab('paper'); }} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200">
-            <Layers size={16} /> New Presentation
-          </button>
-        </div>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
@@ -431,9 +426,9 @@ const Dashboard = () => {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Minimal Status Card */}
-          <motion.div variants={overviewItemVariants} className="bg-white rounded-[2rem] p-8 md:p-10 border border-slate-100 shadow-sm relative overflow-hidden group">
-            <div className="relative z-10 flex flex-col h-full justify-between gap-10">
-              <div className="flex items-start justify-between">
+          <motion.div variants={overviewItemVariants} className="bg-white rounded-[2rem] p-6 md:p-10 border border-slate-100 shadow-sm relative overflow-hidden group">
+            <div className="relative z-10 flex flex-col h-full justify-between gap-8 md:gap-10">
+              <div className="flex flex-col md:flex-row items-start justify-between gap-6 md:gap-0">
                 <div>
                   <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest mb-4 border ${
                     registration?.status === 'Accepted' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
@@ -443,14 +438,14 @@ const Dashboard = () => {
                     {registration?.status === 'Accepted' ? <CheckCircle size={14} /> : <Clock size={14} />}
                     {registration?.status === 'Submitted' && !registration?.paperDetails?.fileUrl ? 'Awaiting Upload' : (registration?.status || 'Not Submitted')}
                   </div>
-                  <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-tight">
+                  <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-slate-800 tracking-tight leading-tight">
                     {registration?.status === 'Accepted' ? 'Manuscript Accepted' :
                       registration?.status === 'Under Review' ? 'Under External Review' :
                       (registration?.status === 'Submitted' && registration?.paperDetails?.fileUrl) ? 'Submission Received' :
                       'Incomplete Submission'}
                   </h2>
                 </div>
-                <div className="flex flex-col items-end gap-3 text-right">
+                <div className="flex flex-row md:flex-col items-center md:items-end gap-6 md:gap-3 text-left md:text-right w-full md:w-auto mt-2 md:mt-0 pt-4 md:pt-0 border-t border-slate-50 md:border-none">
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Delegate ID</p>
                     <p className="font-mono text-xl font-bold text-indigo-600">{registration?.userId?.delegateId || user.delegateId || '----'}</p>
@@ -487,17 +482,23 @@ const Dashboard = () => {
                     }}
                   />
                 </div>
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
-                  <span className={registration?.paperDetails?.abstract ? 'text-slate-800' : ''}>Registration</span>
-                  <span className={registration?.paperDetails?.fileUrl ? 'text-slate-800' : ''}>Manuscript</span>
-                  <span className={['Under Review', 'Accepted', 'Rejected'].includes(registration?.paperDetails?.reviewStatus) ? 'text-slate-800' : ''}>Evaluation</span>
-                  <span className={['Accepted', 'Rejected'].includes(registration?.status) ? 'text-slate-800' : ''}>Result</span>
+                <div className="grid grid-cols-4 gap-1 text-center md:flex md:justify-between px-1">
+                  {[
+                    { label: 'Registration', active: !!registration?.paperDetails?.abstract },
+                    { label: 'Manuscript', active: !!registration?.paperDetails?.fileUrl },
+                    { label: 'Evaluation', active: ['Under Review', 'Accepted', 'Rejected'].includes(registration?.paperDetails?.reviewStatus) },
+                    { label: 'Result', active: ['Accepted', 'Rejected'].includes(registration?.status) }
+                  ].map((step, i) => (
+                    <span key={i} className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest ${step.active ? 'text-slate-800' : 'text-slate-400'}`}>
+                      {step.label}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           </motion.div>
 
-          <motion.div variants={overviewItemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <motion.div variants={overviewItemVariants} className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -531,6 +532,16 @@ const Dashboard = () => {
               </div>
               <p className="text-sm font-bold text-slate-800">5th May 2026</p>
             </div>
+
+            <button 
+              onClick={() => { setIsAddingNew(true); setActiveTab('paper'); }} 
+              className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg hover:bg-slate-800 transition-all flex flex-col items-center justify-center gap-2 group active:scale-[0.98] text-white"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <PlusCircle size={22} />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest">New Presentation</span>
+            </button>
           </motion.div>
 
           {/* Deadlines List */}
@@ -755,17 +766,20 @@ const Dashboard = () => {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Paper Selector List */}
-        <motion.div variants={overviewItemVariants} initial="hidden" animate="visible" className="bg-white/40 backdrop-blur-xl p-4 rounded-[2rem] border border-white/60 flex flex-wrap gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+        <motion.div variants={overviewItemVariants} initial="hidden" animate="visible" className="bg-white/40 backdrop-blur-xl p-3 rounded-3xl border border-white/60 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
           {registrations.map((reg) => (
-            <button
+            <div
               key={reg._id}
               onClick={() => setActiveRegistrationId(reg._id)}
-              className={`px-5 py-3 rounded-2xl flex items-center gap-3 transition-all shrink-0 whitespace-nowrap border-2 ${activeRegistrationId === reg._id 
-                ? 'bg-indigo-600 text-white border-indigo-200 shadow-lg shadow-indigo-100' 
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveRegistrationId(reg._id); }}
+              className={`cursor-pointer px-4 py-2 rounded-xl flex items-center gap-2.5 transition-all shrink-0 whitespace-nowrap border-2 ${activeRegistrationId === reg._id 
+                ? 'bg-indigo-600 text-white border-indigo-200 shadow-md shadow-indigo-100' 
                 : 'bg-white/80 text-slate-600 border-transparent hover:bg-white hover:border-slate-100 shadow-sm'}`}
             >
-              <div className={`w-2 h-2 rounded-full ${activeRegistrationId === reg._id ? 'bg-white' : (reg.status === 'Accepted' ? 'bg-emerald-400' : reg.status === 'Rejected' ? 'bg-red-400' : 'bg-amber-400')}`}></div>
-              <span className="text-xs font-black uppercase tracking-widest">{reg.paperId || `#${reg._id.slice(-6).toUpperCase()}`}</span>
+              <div className={`w-1.5 h-1.5 rounded-full ${activeRegistrationId === reg._id ? 'bg-white' : (reg.status === 'Accepted' ? 'bg-emerald-400' : reg.status === 'Rejected' ? 'bg-red-400' : 'bg-amber-400')}`}></div>
+              <span className="text-[10px] font-black uppercase tracking-widest">{reg.paperId || `#${reg._id.slice(-6).toUpperCase()}`}</span>
               {!['Accepted', 'Rejected'].includes(reg.status) && (
                 <button
                   onClick={(e) => {
@@ -775,16 +789,16 @@ const Dashboard = () => {
                   className="p-1 hover:bg-white/20 rounded text-white/40 hover:text-white transition-colors"
                   title="Delete Paper"
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               )}
-            </button>
+            </div>
           ))}
           <button 
             onClick={() => setIsAddingNew(true)}
-            className="px-5 py-3 rounded-2xl flex items-center gap-2 bg-slate-900 text-white transition-all shadow-lg shadow-slate-200 hover:bg-slate-800 ml-auto"
+            className="px-4 py-2 rounded-xl flex items-center gap-2 bg-slate-900 text-white transition-all shadow-md shadow-slate-200 hover:bg-slate-800 shrink-0 whitespace-nowrap sm:ml-auto"
           >
-            <PlusCircle size={14} />
+            <PlusCircle size={12} />
             <span className="text-[10px] font-black uppercase tracking-widest">Submit New Paper</span>
           </button>
         </motion.div>
@@ -845,25 +859,95 @@ const Dashboard = () => {
         ) : (
 
           <motion.div variants={overviewItemVariants} className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 hover:shadow-lg transition-all duration-300">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-slate-50 pb-6">
+            {/* Combined Manuscript Actions */}
+            <div className="mb-8 pb-8 border-b border-slate-100">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <FileUp size={14} className="text-slate-400" /> Full Paper Management
+              </h3>
+
+              {registration?.status !== 'Accepted' && (
+                <div className="flex flex-col gap-4">
+                  {registration?.status === 'Rejected' ? (
+                    <div className="p-6 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center justify-center text-center">
+                      <AlertCircle size={32} className="text-red-500 mb-3" />
+                      <p className="text-sm font-bold text-red-800">
+                        This manuscript has been rejected. The decision is final and no further re-submissions are permitted.
+                      </p>
+                    </div>
+                  ) : !registration?.paperDetails?.fileUrl ? (
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".doc,.docx"
+                        onChange={handleFullPaperUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
+                        disabled={uploading}
+                      />
+                      <button className="w-full relative z-0 flex items-center justify-center gap-3 bg-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 pointer-events-none">
+                        {uploading ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : <FileUp size={18} />}
+                        {uploading ? 'Uploading...' : 'Upload Full Paper (.docx)'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <button onClick={() => handleDownload(registration._id)} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
+                        <Download size={18} />
+                        Download Manuscript
+                      </button>
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept=".doc,.docx"
+                          onChange={handleFullPaperUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
+                          disabled={uploading}
+                        />
+                        <button className="w-full h-full flex items-center justify-center gap-2 bg-slate-50 text-slate-500 border border-slate-200 px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-100 transition-all pointer-events-none">
+                          {uploading ? 'Updating...' : 'Update Manuscript'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {registration?.status === 'Accepted' && registration?.paperDetails?.fileUrl && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button onClick={() => handleDownload(registration._id)} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
+                    <Download size={18} />
+                    Download Manuscript
+                  </button>
+                  <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-center justify-center">
+                    <p className="text-xs font-bold text-amber-700 flex items-center gap-2">
+                      <ShieldCheck size={14} /> Editing locked after {registration.status.toLowerCase()}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-4 mb-6 border-b border-slate-50 pb-6">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.15em]">Registration Details</h3>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 flex items-center gap-2">
-                  <Clock size={12} className="text-slate-400" /> Submitted: {registration?.createdAt ? new Date(registration.createdAt).toLocaleDateString() : 'N/A'}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center gap-1.5" title="Submission Date">
+                  <Clock size={12} className="text-slate-400" /> {registration?.createdAt ? new Date(registration.createdAt).toLocaleDateString() : 'N/A'}
                 </span>
                 {!['Accepted', 'Rejected'].includes(registration?.status) && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={handleEditDetails}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-indigo-100/50 hover:border-indigo-200"
+                      title="Edit Details"
+                      className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-100/50 hover:border-indigo-200"
                     >
-                      <Edit2 size={12} /> Edit Details
+                      <Edit2 size={14} />
                     </button>
                     <button
                       onClick={() => handleDeleteRegistration(registration._id)}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors border border-red-100/50 hover:border-red-200 font-mono"
+                      title="Delete Submission"
+                      className="p-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition-colors border border-red-100/50 hover:border-red-200"
                     >
-                      <Trash2 size={12} /> Delete Submission
+                      <Trash2 size={14} />
                     </button>
                   </div>
                 )}
@@ -1028,74 +1112,6 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Combined Manuscript Actions */}
-              <div className="pt-8 mt-8 border-t border-slate-100">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <FileUp size={14} className="text-slate-400" /> Full Paper Management
-                </h3>
-
-                {registration?.status !== 'Accepted' && (
-                  <div className="flex flex-col gap-4">
-                    {registration?.status === 'Rejected' ? (
-                      <div className="p-6 bg-red-50 rounded-2xl border border-red-100 flex flex-col items-center justify-center text-center">
-                        <AlertCircle size={32} className="text-red-500 mb-3" />
-                        <p className="text-sm font-bold text-red-800">
-                          This manuscript has been rejected. The decision is final and no further re-submissions are permitted.
-                        </p>
-                      </div>
-                    ) : !registration?.paperDetails?.fileUrl ? (
-                      <div className="relative">
-                        <input
-                          type="file"
-                          accept=".doc,.docx"
-                          onChange={handleFullPaperUpload}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
-                          disabled={uploading}
-                        />
-                        <button className="w-full relative z-0 flex items-center justify-center gap-3 bg-indigo-600 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 pointer-events-none">
-                          {uploading ? (
-                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                          ) : <FileUp size={18} />}
-                          {uploading ? 'Uploading...' : 'Upload Full Paper (.docx)'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button onClick={() => handleDownload(registration._id)} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
-                          <Download size={18} />
-                          Download Manuscript
-                        </button>
-                        <div className="relative">
-                          <input
-                            type="file"
-                            accept=".doc,.docx"
-                            onChange={handleFullPaperUpload}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-wait z-10"
-                            disabled={uploading}
-                          />
-                          <button className="w-full h-full flex items-center justify-center gap-2 bg-slate-50 text-slate-500 border border-slate-200 px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-100 transition-all pointer-events-none">
-                            {uploading ? 'Updating...' : 'Update Manuscript'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {registration?.status === 'Accepted' && registration?.paperDetails?.fileUrl && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <button onClick={() => handleDownload(registration._id)} className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold text-sm hover:bg-slate-800 hover:-translate-y-1 transition-all shadow-lg hover:shadow-slate-200">
-                      <Download size={18} />
-                      Download Manuscript
-                    </button>
-                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-center justify-center">
-                      <p className="text-xs font-bold text-amber-700 flex items-center gap-2">
-                        <ShieldCheck size={14} /> Editing locked after {registration.status.toLowerCase()}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </motion.div>
         )}
@@ -1330,11 +1346,8 @@ const Dashboard = () => {
             <button
               key={item.id}
               onClick={() => {
-                if (item.id === 'idcard') {
-                  setShowIDCard(true);
-                } else {
-                  setActiveTab(item.id);
-                }
+                setShowIDCard(item.id === 'idcard');
+                setActiveTab(item.id);
                 setIsSidebarOpen(false);
               }}
               className={`flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 text-left group relative w-full overflow-hidden ${activeTab === item.id
@@ -1446,6 +1459,21 @@ const Dashboard = () => {
             {activeTab === 'paper' && renderSubmissionTab()}
             {activeTab === 'payment' && renderPayment()}
             {activeTab === 'certificate' && renderCertificate()}
+            {activeTab === 'idcard' && (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-in">
+                  <div className="w-24 h-24 bg-slate-100 text-slate-400 rounded-3xl flex items-center justify-center mb-6 shadow-sm border border-slate-100">
+                      <Award size={48} />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Digital ID Identity</h3>
+                  <p className="text-slate-500 font-medium mb-8 max-w-sm">Access your official conference delegate pass and verify your identity on-site.</p>
+                  <button 
+                      onClick={() => setShowIDCard(true)}
+                      className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all flex items-center translate-y-0 active:scale-95 gap-2"
+                  >
+                      <LayoutDashboard size={18} /> Open ID Card Modal
+                  </button>
+              </div>
+            )}
             {activeTab === 'notifications' && (
               <div className="animate-fade-in max-w-4xl mx-auto">
                 <div className="flex justify-end items-center mb-6">
@@ -1667,8 +1695,17 @@ const Dashboard = () => {
 
         {/* Digital ID Card Modal */}
         {showIDCard && registration && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in print:bg-white print:p-0">
-            <div className="flex flex-col gap-6 max-w-[28rem] w-full animate-scale-in print:hidden perspective-1000">
+          <div 
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-fade-in print:bg-white print:p-0 cursor-pointer"
+            onClick={() => {
+              setShowIDCard(false);
+              setIsFlipped(false);
+            }}
+          >
+            <div 
+              className="flex flex-col gap-6 max-w-[28rem] w-full animate-scale-in print:hidden perspective-1000 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
 
               <div
                 className="relative cursor-pointer transition-all duration-700 ease-in-out"

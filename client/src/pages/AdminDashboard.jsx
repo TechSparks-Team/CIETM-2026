@@ -559,7 +559,7 @@ const AdminDashboard = () => {
         paperId.toLowerCase().includes(search.toLowerCase()) ||
         delegateId.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
-    }).filter(reg => reg.status !== 'Draft');
+    });
   }, [registrations, filter, search]);
 
   const tracksChartData = useMemo(() => {
@@ -773,14 +773,21 @@ const AdminDashboard = () => {
                 className="space-y-10 max-w-7xl mx-auto"
               >
                 {/* Stats Grid */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                   {[
                     { 
                       label: 'Total Registrations', 
                       value: analytics?.overview?.totalRegistrations || 0, 
                       icon: Users, 
                       color: 'indigo', 
-                      trend: `${Math.round(((analytics?.overview?.totalAccepted || 0) + (analytics?.overview?.totalPending || 0)) / (analytics?.overview?.totalRegistrations || 1) * 100)}% active papers` 
+                      trend: `All system entries` 
+                    },
+                    { 
+                      label: 'Author Drafts', 
+                      value: analytics?.overview?.totalDrafts || 0, 
+                      icon: Clock, 
+                      color: 'slate', 
+                      trend: `Incomplete forms` 
                     },
                     { 
                       label: 'Papers Accepted', 
@@ -930,7 +937,8 @@ const AdminDashboard = () => {
                     <div className="hidden sm:flex gap-1 p-1 bg-slate-100/50 rounded-xl border border-slate-200">
                       {[
                         { id: 'All', icon: Layers },
-                        { id: 'Submitted', icon: Clock },
+                        { id: 'Draft', icon: Clock },
+                        { id: 'Submitted', icon: Files },
                         { id: 'Under Review', icon: Shield },
                         { id: 'Accepted', icon: CheckCircle },
                         { id: 'Rejected', icon: XCircle }
@@ -962,7 +970,8 @@ const AdminDashboard = () => {
                           <div className="p-1.5 flex flex-col gap-1">
                             {[
                               { id: 'All', icon: Layers },
-                              { id: 'Submitted', icon: Clock },
+                              { id: 'Draft', icon: Clock },
+                              { id: 'Submitted', icon: Files },
                               { id: 'Under Review', icon: Shield },
                               { id: 'Accepted', icon: CheckCircle },
                               { id: 'Rejected', icon: XCircle }

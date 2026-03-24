@@ -25,7 +25,7 @@ const Navbar = () => {
     };
 
     // Intersection Observer for highlighting sections
-    const sectionIds = ['hero', 'about-conference', 'conference', 'tracks', 'patrons', 'speakers', 'advisory-board', 'organizing-team', 'about', 'developers'];
+    const sectionIds = ['hero', 'about-conference', 'themes', 'conference', 'tracks', 'patrons', 'speakers', 'advisory-board', 'organizing-team', 'about', 'developers'];
     
     const observerOptions = {
       root: null,
@@ -42,6 +42,7 @@ const Navbar = () => {
           const sectionMapping = {
             '#hero': '#hero',
             '#about-conference': '#about-conference',
+            '#themes': '#themes',
             '#conference': '#conference',
             '#tracks': '#tracks',
             '#speakers': '#speakers',
@@ -114,7 +115,7 @@ const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', href: '#hero' },
-    { name: 'Themes', href: '#about-conference' },
+    { name: 'Themes', href: '#themes' },
     { name: 'Guidelines', href: '#conference' },
     { name: 'Tracks', href: '#tracks' },
     { name: 'Speakers', href: '#speakers' },

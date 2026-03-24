@@ -416,7 +416,6 @@ const updatePaper = async (req, res) => {
 const getAdminAnalytics = async (req, res) => {
     try {
         const stats = await Registration.aggregate([
-            { $match: { status: { $ne: 'Draft' } } },
             {
                 $group: {
                     _id: null,
@@ -424,6 +423,7 @@ const getAdminAnalytics = async (req, res) => {
                     totalAccepted: { $sum: { $cond: [{ $eq: ["$status", "Accepted"] }, 1, 0] } },
                     totalRejected: { $sum: { $cond: [{ $eq: ["$status", "Rejected"] }, 1, 0] } },
                     totalPending: { $sum: { $cond: [{ $in: ["$status", ["Submitted", "Under Review"]] }, 1, 0] } },
+                    totalDrafts: { $sum: { $cond: [{ $eq: ["$status", "Draft"] }, 1, 0] } },
                     totalPayments: { $sum: { $cond: [{ $eq: ["$paymentStatus", "Completed"] }, "$amount", 0] } },
                     completedPaymentsCount: { $sum: { $cond: [{ $eq: ["$paymentStatus", "Completed"] }, 1, 0] } }
                 }
@@ -431,7 +431,6 @@ const getAdminAnalytics = async (req, res) => {
         ]);
 
         const trackStats = await Registration.aggregate([
-            { $match: { status: { $ne: 'Draft' } } },
             { $group: { _id: "$paperDetails.track", count: { $sum: 1 } } }
         ]);
 

@@ -283,7 +283,7 @@ const HomePage = () => {
           </div>
 
           {/* Topics of Interest - Updated to support pagination for 13 programs */}
-          <div className="relative group p-1 max-w-5xl mx-auto" id="themes-pagination">
+          <div className="relative group p-1 max-w-5xl mx-auto" id="themes">
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-[20px] md:rounded-[30px] blur-md opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
             <div className="bg-slate-950 rounded-[30px] md:rounded-[40px] p-4 sm:p-6 md:p-8 text-white relative overflow-hidden shadow-2xl border border-white/5 w-full">
               <div className="absolute top-0 right-0 w-[400px] h-full bg-[radial-gradient(circle_at_70%_30%,rgba(99,102,241,0.15),transparent_70%)] pointer-events-none"></div>
@@ -1101,19 +1101,21 @@ const HomePage = () => {
       </section>
 
       {/* Stats Strip */}
-      <section className="py-24 bg-gradient-to-br from-indigo-500 to-purple-600 text-white mt-16">
-        <div className="w-full max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-          <div className="flex flex-col">
-            <h2 className="text-[3.5rem] font-bold mb-2 tracking-tight leading-none">20+</h2>
-            <p className="opacity-90 font-bold uppercase tracking-[0.1rem] text-sm">Experts</p>
+      <section className="py-20 bg-gradient-to-r from-amber-400 via-pink-600 to-indigo-600 text-white mt-16 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"></div>
+        <div className="w-full max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 text-center relative z-10">
+          <div className="flex flex-col items-center">
+            <h2 className="text-6xl md:text-7xl font-black mb-3 tracking-tighter leading-none text-slate-950 drop-shadow-sm">20+</h2>
+            <p className="text-white font-black uppercase tracking-[0.2em] text-[10px] md:text-xs opacity-90">Experts</p>
           </div>
-          <div className="flex flex-col">
-            <h2 className="text-[3.5rem] font-bold mb-2 tracking-tight leading-none">150+</h2>
-            <p className="opacity-90 font-bold uppercase tracking-[0.1rem] text-sm">Original Papers</p>
+          <div className="flex flex-col items-center">
+            <h2 className="text-6xl md:text-7xl font-black mb-3 tracking-tighter leading-none text-slate-950 drop-shadow-sm">150+</h2>
+            <p className="text-white font-black uppercase tracking-[0.2em] text-[10px] md:text-xs opacity-90">Original Papers</p>
           </div>
-          <div className="flex flex-col">
-            <h2 className="text-[3.5rem] font-bold mb-2 tracking-tight leading-none">10+</h2>
-            <p className="opacity-90 font-bold uppercase tracking-[0.1rem] text-sm">Industry Partners</p>
+          <div className="flex flex-col items-center">
+            <h2 className="text-6xl md:text-7xl font-black mb-3 tracking-tighter leading-none text-slate-950 drop-shadow-sm">10+</h2>
+            <p className="text-white font-black uppercase tracking-[0.2em] text-[10px] md:text-xs opacity-90">Industry Partners</p>
           </div>
         </div>
       </section>

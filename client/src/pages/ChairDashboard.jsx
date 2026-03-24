@@ -468,7 +468,7 @@ const ChairDashboard = () => {
         paperId.toLowerCase().includes(search.toLowerCase()) ||
         delegateId.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
-    }).filter(reg => reg.status !== 'Draft');
+    });
   }, [registrations, filter, search]);
 
   const uniquePapersCount = useMemo(() => {
@@ -794,7 +794,8 @@ const ChairDashboard = () => {
                   <div className="hidden sm:flex gap-1 p-1 bg-slate-100/50 rounded-xl border border-slate-200">
                     {[
                       { id: 'All', icon: Layers },
-                      { id: 'Submitted', icon: Clock },
+                      { id: 'Draft', icon: Clock },
+                      { id: 'Submitted', icon: Files },
                       { id: 'Under Review', icon: Shield },
                       { id: 'Accepted', icon: CheckCircle },
                       { id: 'Rejected', icon: XCircle }
@@ -826,7 +827,8 @@ const ChairDashboard = () => {
                         <div className="p-1.5 flex flex-col gap-1">
                           {[
                             { id: 'All', icon: Layers },
-                            { id: 'Submitted', icon: Clock },
+                            { id: 'Draft', icon: Clock },
+                            { id: 'Submitted', icon: Files },
                             { id: 'Under Review', icon: Shield },
                             { id: 'Accepted', icon: CheckCircle },
                             { id: 'Rejected', icon: XCircle }

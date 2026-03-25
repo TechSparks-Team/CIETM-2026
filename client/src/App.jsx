@@ -18,6 +18,8 @@ const ChairDashboard = lazy(() => import('./pages/ChairDashboard'));
 const ReviewerDashboard = lazy(() => import('./pages/ReviewerDashboard'));
 const TermsConditions = lazy(() => import('./pages/TermsConditions'));
 const UserGuide = lazy(() => import('./pages/UserGuide'));
+const MaintenancePage = lazy(() => import('./pages/MaintenancePage'));
+
 
 const MobileWarning = () => {
   const [show, setShow] = useState(false);
@@ -74,8 +76,10 @@ const AppContent = () => {
   const hideNavbar = location.pathname.startsWith('/dashboard') || 
                      location.pathname.startsWith('/admin/dashboard') ||
                      location.pathname.startsWith('/chair/dashboard') ||
-                     location.pathname.startsWith('/reviewer/dashboard');
+                     location.pathname.startsWith('/reviewer/dashboard') ||
+                     location.pathname === '/maintenance';
   const hideFooter = hideNavbar || location.pathname === '/register' || location.pathname === '/login' || location.pathname === '/admin/login';
+
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -93,6 +97,8 @@ const AppContent = () => {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/admin/login" element={<LoginPage />} />
+            <Route path="/maintenance" element={<MaintenancePage />} />
+
 
             {/* Author Routes */}
             <Route

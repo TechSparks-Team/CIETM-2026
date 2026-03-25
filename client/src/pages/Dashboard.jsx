@@ -313,6 +313,10 @@ const Dashboard = () => {
     const targetId = regId || registration?._id;
     if (!targetId) return;
 
+    if (settings && settings.onlinePaymentEnabled === false) {
+      return toast.error("Online payment gateway is temporarily disabled. Please contact the conference desk for manual options.");
+    }
+
     setPaymentLoading(targetId); // Store ID to show loading on specific button
     try {
       const { data } = await axios.post('/api/payments/init', {
@@ -654,17 +658,30 @@ const Dashboard = () => {
               </div>
 
               {registration?.paymentStatus !== 'Completed' && (
-                <button
-                  onClick={() => {
-                    const tab = registration?.status === 'Accepted' ? 'payment' : 'paper';
-                    setActiveTab(tab);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="w-full py-3.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
-                >
-                  {registration?.status === 'Accepted' ? 'Proceed to Payment' :
-                    registration?.paperDetails?.fileUrl ? 'Open Submission' : 'Upload Manuscript'}
-                </button>
+                <div className="w-full">
+                  <button
+                    onClick={() => {
+                      const tab = registration?.status === 'Accepted' ? 'payment' : 'paper';
+                      setActiveTab(tab);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    disabled={registration?.status === 'Accepted' && settings?.onlinePaymentEnabled === false}
+                    className={`w-full py-3.5 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-slate-200 ${
+                      registration?.status === 'Accepted' && settings?.onlinePaymentEnabled === false
+                        ? 'bg-slate-400 cursor-not-allowed'
+                        : 'bg-slate-900 hover:bg-slate-800'
+                    }`}
+                  >
+                    {registration?.status === 'Accepted' 
+                      ? (settings?.onlinePaymentEnabled === false ? 'Payment Offline' : 'Proceed to Payment')
+                      : (registration?.paperDetails?.fileUrl ? 'Open Submission' : 'Upload Manuscript')}
+                  </button>
+                  {registration?.status === 'Accepted' && settings && settings.onlinePaymentEnabled === false && (
+                    <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mt-3 animate-pulse">
+                      Only Offline Payment Accepted
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </motion.div>
@@ -1153,6 +1170,29 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
+        {/* Offline Payment Instruction Banner */}
+        {settings && settings.onlinePaymentEnabled === false && (
+          <motion.div variants={overviewItemVariants} className="bg-amber-50 border border-amber-200 p-6 md:p-8 rounded-[2rem] flex items-start gap-5 shadow-sm">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm border border-amber-100 shrink-0 transform -rotate-3">
+               <AlertCircle size={24} />
+            </div>
+            <div>
+               <h4 className="text-sm font-black text-amber-900 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                 <ShieldCheck size={16} className="text-amber-600" />
+                 Online Gateway Disabled - Offline Payment Only
+               </h4>
+               <p className="text-xs font-semibold text-amber-800/80 leading-relaxed max-w-2xl">
+                 The automated registration gateway is currently offline. For this phase, only <strong>Offline Payments (On-site / Spot Registration)</strong> are being processed. 
+                 Please visit the conference registration desk or contact the organizing committee to complete your fee payment and receive your official credentials.
+               </p>
+               <div className="mt-4 flex gap-3">
+                  <div className="px-3 py-1.5 bg-white/60 rounded-lg border border-amber-200 text-[10px] font-black text-amber-700 uppercase tracking-widest">At-Venue Registration Desk</div>
+                  <div className="px-3 py-1.5 bg-white/60 rounded-lg border border-amber-200 text-[10px] font-black text-amber-700 uppercase tracking-widest">Spot Payment Only</div>
+               </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Simplified Paper List */}
         <div className="space-y-4">
           {registrations.map((reg, idx) => {
@@ -1190,11 +1230,11 @@ const Dashboard = () => {
                     ) : reg.status === 'Accepted' ? (
                         <button
                           onClick={() => handlePayment(reg._id)}
-                          disabled={paymentLoading && paymentLoading !== reg._id}
+                          disabled={(paymentLoading && paymentLoading !== reg._id) || (settings && settings.onlinePaymentEnabled === false)}
                           className="w-full py-2.5 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-30 active:scale-95"
                         >
                           {isIndividualLoading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <CreditCard size={14} />}
-                          {isIndividualLoading ? 'Wait...' : 'Pay Now'}
+                          {settings && settings.onlinePaymentEnabled === false ? 'Online Payment Disabled' : (isIndividualLoading ? 'Wait...' : 'Pay Now')}
                         </button>
                     ) : (
                       <div className="text-center py-2 bg-slate-50 rounded-xl border border-slate-100">

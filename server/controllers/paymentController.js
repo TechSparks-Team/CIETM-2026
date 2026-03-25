@@ -1,4 +1,5 @@
 const Registration = require('../models/Registration');
+const Settings = require('../models/Settings');
 const { Cashfree, CFEnvironment } = require('cashfree-pg');
 const notificationController = require('./notificationController');
 
@@ -21,6 +22,14 @@ const initPayment = async (req, res) => {
     const userId = req.user._id;
 
     try {
+        // Check if online payments are enabled in system settings
+        const settings = await Settings.findOne();
+        if (settings && settings.onlinePaymentEnabled === false) {
+            return res.status(403).json({ 
+                message: 'Online payment gateway is temporarily disabled by the administrator. Please contact the conference desk for manual payment options.' 
+            });
+        }
+
         const registration = await Registration.findById(registrationId);
 
         if (!registration) {

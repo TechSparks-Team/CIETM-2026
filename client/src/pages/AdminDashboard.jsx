@@ -18,7 +18,7 @@ import DashboardSkeleton from '../components/DashboardSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { ShieldCheck, QrCode, ScanLine, Menu, X, CheckSquare, Square } from 'lucide-react';
+import { ShieldCheck, QrCode, ScanLine, Menu, X, CheckSquare, Square, Send } from 'lucide-react';
 import { CONFERENCE_TRACKS, CATEGORY_AMOUNTS } from '../constants/conferenceData';
 import { downloadFile } from '../utils/downloadHelper';
 
@@ -141,6 +141,7 @@ const AdminDashboard = () => {
   const [activeReviewerMenu, setActiveReviewerMenu] = useState(null);
   const [activeUserRoleMenu, setActiveUserRoleMenu] = useState(null);
   const [updatingRole, setUpdatingRole] = useState(false);
+  const [settingsSubTab, setSettingsSubTab] = useState('configuration');
   const mobileFilterRef = useRef(null);
   const verifyingRef = useRef(false);
 
@@ -1861,296 +1862,376 @@ const AdminDashboard = () => {
             {activeTab === 'settings' && settings && (
               <motion.div
                 key="settings"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="max-w-7xl mx-auto space-y-10"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="max-w-6xl mx-auto"
               >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                  {/* System Configuration */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-200 p-10 shadow-sm">
-                    <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
-                      <Settings className="text-indigo-600" /> System Control
-                    </h3>
-                    <form onSubmit={handleUpdateSettings} className="space-y-6">
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div>
-                          <p className="text-sm font-black text-slate-800">Registration Status</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Toggle portal accessibility</p>
-                        </div>
+                <div className="flex flex-col lg:flex-row gap-6">
+                  {/* Professional Sidebar Navigation */}
+                  <div className="w-full lg:w-64 shrink-0">
+                    <nav className="space-y-1 bg-white border border-slate-200 rounded-xl p-2 shadow-sm sticky top-28">
+                      {[
+                        { id: 'configuration', label: 'General Config', icon: Settings },
+                        { id: 'broadcast', label: 'Global Broadcast', icon: Bell },
+                        { id: 'access', label: 'Access Control', icon: Shield },
+                        { id: 'advanced', label: 'Advanced Tools', icon: Zap }
+                      ].map(sub => (
                         <button
-                          type="button"
-                          onClick={() => setSettings({ ...settings, registrationOpen: !settings.registrationOpen })}
-                          className={`w-14 h-8 rounded-full transition-all relative ${settings.registrationOpen ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                          key={sub.id}
+                          onClick={() => setSettingsSubTab(sub.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-xs font-bold transition-all ${
+                            settingsSubTab === sub.id 
+                              ? 'bg-slate-900 text-white' 
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          }`}
                         >
-                          <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.registrationOpen ? 'left-7' : 'left-1'}`}></div>
+                          <sub.icon size={16} />
+                          {sub.label}
                         </button>
-                      </div>
+                      ))}
+                    </nav>
 
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div>
-                          <p className="text-sm font-black text-slate-800">Online Payments</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Enable/Disable payment gateway</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setSettings({ ...settings, onlinePaymentEnabled: !settings.onlinePaymentEnabled })}
-                          className={`w-14 h-8 rounded-full transition-all relative ${settings.onlinePaymentEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                        >
-                          <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.onlinePaymentEnabled ? 'left-7' : 'left-1'}`}></div>
-                        </button>
+                    <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Platform Engine</p>
+                      <div className="flex items-center justify-between">
+                         <span className="text-xs font-black text-slate-700">CIETM v2.0.4</span>
+                         <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></span>
                       </div>
-
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        <div>
-                          <p className="text-sm font-black text-slate-800">Auto-Assign Reviewers</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">Enable/Disable background assignment engine</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setSettings({ ...settings, autoAssignEnabled: !settings.autoAssignEnabled })}
-                          className={`w-14 h-8 rounded-full transition-all relative ${settings.autoAssignEnabled ? 'bg-blue-500' : 'bg-slate-300'}`}
-                        >
-                          <div className={`absolute top-1 w-6 h-6 bg-white rounded-full transition-all ${settings.autoAssignEnabled ? 'left-7' : 'left-1'}`}></div>
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Abstract Deadline</label>
-                          <input
-                            type="date"
-                            value={settings.deadlines?.abstractSubmission?.split('T')[0] || ''}
-                            onChange={(e) => setSettings({ ...settings, deadlines: { ...settings.deadlines, abstractSubmission: e.target.value } })}
-                            className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Paper Deadline</label>
-                          <input
-                            type="date"
-                            value={settings.deadlines?.fullPaperSubmission?.split('T')[0] || ''}
-                            onChange={(e) => setSettings({ ...settings, deadlines: { ...settings.deadlines, fullPaperSubmission: e.target.value } })}
-                            className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl font-bold text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Registration Fees (INR)</label>
-                        <div className="grid grid-cols-2 gap-4">
-                          {Object.keys(settings.fees || {}).map(f => (
-                            <div key={f} className="relative">
-                              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
-                              <input
-                                type="number"
-                                placeholder={f}
-                                value={settings.fees[f]}
-                                onChange={(e) => setSettings({ ...settings, fees: { ...settings.fees, [f]: e.target.value } })}
-                                className="w-full pl-8 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-xs"
-                              />
-                              <span className="absolute -top-1 right-2 bg-indigo-50 text-indigo-600 text-[7px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                                {f.split(' ')[0]}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        disabled={isUpdatingSettings}
-                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:-translate-y-1 transition-all disabled:opacity-50"
-                      >
-                        {isUpdatingSettings ? 'Committing Changes...' : 'Save Configuration'}
-                      </button>
-                    </form>
+                    </div>
                   </div>
 
-                  {/* Global Announcement */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-200 p-6 md:p-10 shadow-sm">
-                    <h3 className="text-xl font-black text-slate-800 mb-6 md:mb-8 flex items-center gap-3">
-                      <Bell className="text-amber-500" /> Global Broadcast
-                    </h3>
-                    <form onSubmit={handleBroadcast} className="space-y-6">
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Notification Title</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Deadline Extended!"
-                          value={broadcast.title}
-                          onChange={(e) => setBroadcast({ ...broadcast, title: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-sm"
-                        />
-                      </div>
+                  {/* Main Settings Content Area */}
+                  <div className="flex-1">
+                    <AnimatePresence mode="wait">
+                      {settingsSubTab === 'configuration' && (
+                        <motion.div
+                          key="config"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          className="space-y-6"
+                        >
+                          <form onSubmit={handleUpdateSettings} className="space-y-6">
+                            <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
+                              <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+                                <Settings className="text-slate-400" size={20} />
+                                <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">System Configuration</h3>
+                              </div>
 
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-2">Message Content</label>
-                        <textarea
-                          placeholder="Type your announcement here..."
-                          rows={4}
-                          value={broadcast.message}
-                          onChange={(e) => setBroadcast({ ...broadcast, message: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl font-bold text-sm resize-none"
-                        ></textarea>
-                      </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                                {[
+                                  { id: 'registrationOpen', label: 'Registration', active: settings.registrationOpen },
+                                  { id: 'onlinePaymentEnabled', label: 'Payments', active: settings.onlinePaymentEnabled },
+                                  { id: 'autoAssignEnabled', label: 'Auto-Assign', active: settings.autoAssignEnabled }
+                                ].map(toggle => (
+                                  <div key={toggle.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-4">
+                                     <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-black text-slate-700 uppercase tracking-tight">{toggle.label}</p>
+                                        <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${toggle.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                                           {toggle.active ? 'Active' : 'Disabled'}
+                                        </div>
+                                     </div>
+                                     <button
+                                      type="button"
+                                      onClick={() => setSettings({ ...settings, [toggle.id]: !settings[toggle.id] })}
+                                      className={`w-full py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                                        toggle.active ? 'bg-indigo-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'
+                                      }`}
+                                    >
+                                      Toggle {toggle.active ? 'Off' : 'On'}
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
 
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-3">Target Audience</label>
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { id: 'author', label: 'Authors' },
-                            { id: 'chair', label: 'Chairs' },
-                            { id: 'reviewer', label: 'Reviewers' }
-                          ].map(role => (
-                            <button
-                              key={role.id}
-                              type="button"
-                              onClick={() => {
-                                const newRoles = broadcast.roles.includes(role.id)
-                                  ? broadcast.roles.filter(r => r !== role.id)
-                                  : [...broadcast.roles, role.id];
-                                setBroadcast({ ...broadcast, roles: newRoles });
-                              }}
-                              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${broadcast.roles.includes(role.id)
-                                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
-                                  : 'bg-white border-slate-100 text-slate-400 hover:border-indigo-200'
-                                }`}
-                            >
-                              {broadcast.roles.includes(role.id) ? <CheckSquare size={14} /> : <Square size={14} />}
-                              {role.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex gap-4">
-                        {['info', 'success', 'warning', 'error'].map(t => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => setBroadcast({ ...broadcast, type: t })}
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${broadcast.type === t
-                                ? (t === 'info' ? 'bg-slate-900 border-slate-900 text-white' :
-                                  t === 'success' ? 'bg-emerald-600 border-emerald-600 text-white' :
-                                    t === 'warning' ? 'bg-amber-500 border-amber-500 text-white' :
-                                      'bg-red-600 border-red-600 text-white')
-                                : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-100'
-                              }`}
-                          >
-                            {t}
-                          </button>
-                        ))}
-                      </div>
-
-                      <button className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-indigo-100 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
-                        <Bell size={16} />
-                        Push to {broadcast.roles.length === 3 ? 'Entire Platform' :
-                          broadcast.roles.length === 0 ? 'Selection' :
-                            broadcast.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1) + 's').join(' & ')}
-                      </button>
-                    </form>
-                  </div>
-
-                   {/* Administrative Control */}
-                  <div className="bg-white rounded-[2.5rem] border border-slate-200 p-6 md:p-10 shadow-sm col-span-1 lg:col-span-2">
-                    <h3 className="text-xl font-black text-slate-800 mb-6 md:mb-8 flex items-center gap-3">
-                      <Shield className="text-indigo-600" /> Administrative Control
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                      <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-4">Current Administrators</label>
-                        <div className="space-y-3">
-                          {users.filter(u => u.role === 'admin').map(adminUser => (
-                            <div key={adminUser._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
-                                  {adminUser.name?.charAt(0)}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Abstract Deadline</label>
+                                  <input
+                                    type="date"
+                                    value={settings.deadlines?.abstractSubmission?.split('T')[0] || ''}
+                                    onChange={(e) => setSettings({ ...settings, deadlines: { ...settings.deadlines, abstractSubmission: e.target.value } })}
+                                    className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-bold text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all"
+                                  />
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-black text-slate-800 truncate">{adminUser.name} {adminUser._id === user._id && <span className="text-[8px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded ml-1 font-black">YOU</span>}</p>
-                                  <p className="text-[9px] font-bold text-slate-400 truncate tracking-tighter">{adminUser.email}</p>
+                                <div className="space-y-2">
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Paper Deadline</label>
+                                  <input
+                                    type="date"
+                                    value={settings.deadlines?.fullPaperSubmission?.split('T')[0] || ''}
+                                    onChange={(e) => setSettings({ ...settings, deadlines: { ...settings.deadlines, fullPaperSubmission: e.target.value } })}
+                                    className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl font-bold text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none transition-all"
+                                  />
                                 </div>
                               </div>
-                              {adminUser._id !== user._id && (
-                                <button
-                                  onClick={() => handleRoleUpdate(adminUser._id, 'author')}
-                                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                                  title="Revoke Admin Access"
-                                >
-                                  <LogOut size={14} />
-                                </button>
-                              )}
+
+                              <div className="space-y-4">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Financial Fee Structure (INR)</p>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                  {Object.keys(settings.fees || {}).map(f => (
+                                    <div key={f} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                      <label className="text-[8px] font-black text-slate-400 uppercase leading-none block mb-1">{f}</label>
+                                      <div className="relative">
+                                        <IndianRupee className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={12} />
+                                        <input
+                                          type="number"
+                                          value={settings.fees[f]}
+                                          onChange={(e) => setSettings({ ...settings, fees: { ...settings.fees, [f]: e.target.value } })}
+                                          className="w-full pl-6 pr-2 py-2 bg-white border border-slate-100 rounded-lg font-black text-xs outline-none"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
 
-                      <div className="flex flex-col">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 block mb-4">Promote to Admin</label>
-                        <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100 flex-1 flex flex-col justify-center">
-                          <p className="text-[10px] font-bold text-slate-500 mb-4 leading-relaxed uppercase tracking-tight">
-                            Enter the email address of an existing user to grant them full system administrative privileges.
-                          </p>
-                          <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input
-                              type="email"
-                              placeholder="user@example.com"
-                              value={promoteEmail}
-                              onChange={(e) => setPromoteEmail(e.target.value)}
-                              className="w-full pl-12 pr-4 py-4 bg-white border border-indigo-100 rounded-2xl font-bold text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                            />
+                            <button
+                              disabled={isUpdatingSettings}
+                              className="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                            >
+                              {isUpdatingSettings ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle size={16} />}
+                              {isUpdatingSettings ? 'Committing Changes...' : 'Save All Configurations'}
+                            </button>
+                          </form>
+                        </motion.div>
+                      )}
+
+                      {settingsSubTab === 'broadcast' && (
+                        <motion.div
+                          key="broadcast"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                        >
+                          <form onSubmit={handleBroadcast} className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm space-y-6">
+                            <div className="flex items-center gap-3 mb-2 pb-4 border-b border-slate-100">
+                               <Bell className="text-slate-400" size={20} />
+                               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Platform Announcement</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Message Header</label>
+                                <input
+                                  type="text"
+                                  placeholder="Announcement Title"
+                                  value={broadcast.title}
+                                  onChange={(e) => setBroadcast({ ...broadcast, title: e.target.value })}
+                                  className="w-full bg-slate-50 border border-slate-200 px-4 py-3 rounded-lg font-bold text-xs outline-none focus:border-indigo-600 transition-all"
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Content Body</label>
+                                <textarea
+                                  placeholder="Type the message to be broadcasted..."
+                                  rows={4}
+                                  value={broadcast.message}
+                                  onChange={(e) => setBroadcast({ ...broadcast, message: e.target.value })}
+                                  className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl font-bold text-xs outline-none focus:border-indigo-600 transition-all resize-none"
+                                ></textarea>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Distribution Type</label>
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {['info', 'success', 'warning', 'error'].map(t => (
+                                      <button
+                                        key={t}
+                                        type="button"
+                                        onClick={() => setBroadcast({ ...broadcast, type: t })}
+                                        className={`py-2 rounded-lg text-[9px] font-black uppercase tracking-tighter border transition-all ${broadcast.type === t
+                                            ? (t === 'info' ? 'bg-slate-900 border-slate-900 text-white' :
+                                              t === 'success' ? 'bg-emerald-600 border-emerald-600 text-white' :
+                                                t === 'warning' ? 'bg-amber-600 border-amber-600 text-white' :
+                                                  'bg-red-600 border-red-600 text-white')
+                                            : 'bg-white border-slate-100 text-slate-400 hover:bg-slate-50'
+                                          }`}
+                                      >
+                                        {t}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Target Roles</label>
+                                  <div className="flex flex-wrap gap-2">
+                                    {[
+                                      { id: 'author', label: 'Authors' },
+                                      { id: 'chair', label: 'Chairs' },
+                                      { id: 'reviewer', label: 'Reviewers' }
+                                    ].map(role => (
+                                      <button
+                                        key={role.id}
+                                        type="button"
+                                        onClick={() => {
+                                          const newRoles = broadcast.roles.includes(role.id)
+                                            ? broadcast.roles.filter(r => r !== role.id)
+                                            : [...broadcast.roles, role.id];
+                                          setBroadcast({ ...broadcast, roles: newRoles });
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all flex items-center gap-2 ${broadcast.roles.includes(role.id)
+                                            ? 'bg-indigo-600 border-indigo-600 text-white'
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                          }`}
+                                      >
+                                        {broadcast.roles.includes(role.id) ? <CheckSquare size={12} /> : <Square size={12} />}
+                                        {role.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                                <Send size={16} />
+                                Broadcast Notification
+                              </button>
+                            </div>
+                          </form>
+                        </motion.div>
+                      )}
+
+                      {settingsSubTab === 'access' && (
+                        <motion.div
+                          key="access"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                        >
+                          <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-sm">
+                            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-slate-100">
+                               <Shield className="text-slate-400" size={20} />
+                               <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Administrative Control</h3>
+                            </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+                              <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 block">Current Administrators</label>
+                                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                  {users.filter(u => u.role === 'admin').map(adminUser => (
+                                    <div key={adminUser._id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-lg transition-all hover:bg-white hover:border-slate-200">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-md bg-slate-900 text-white flex items-center justify-center font-black text-xs">
+                                          {adminUser.name?.charAt(0)}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-xs font-black text-slate-800 truncate flex items-center gap-1">
+                                            {adminUser.name}
+                                            {adminUser._id === user._id && <span className="text-[7px] bg-emerald-500 text-white px-1 py-0.5 rounded font-black">YOU</span>}
+                                          </p>
+                                          <p className="text-[9px] font-bold text-slate-400 truncate">{adminUser.email}</p>
+                                        </div>
+                                      </div>
+                                      {adminUser._id !== user._id && (
+                                        <button
+                                          onClick={() => handleRoleUpdate(adminUser._id, 'author')}
+                                          className="p-2 text-slate-400 hover:text-red-500 transition-all"
+                                          title="Revoke Access"
+                                        >
+                                          <LogOut size={14} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                   <UserPlus className="text-slate-600" size={16} />
+                                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Promote New Administrator</h4>
+                                </div>
+                                <p className="text-[10px] font-semibold text-slate-500 leading-relaxed mb-6">
+                                   Enter the email of an existing user to elevate their account. They will gain full system privileges immediately.
+                                </p>
+                                <div className="space-y-4">
+                                  <div className="relative">
+                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                     <input
+                                       type="email"
+                                       placeholder="identity@conference.com"
+                                       value={promoteEmail}
+                                       onChange={(e) => setPromoteEmail(e.target.value)}
+                                       className="w-full pl-9 pr-3 py-3 bg-white border border-slate-200 rounded-xl font-black text-xs outline-none focus:border-indigo-600"
+                                     />
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const targetUser = users.find(u => u.email === promoteEmail);
+                                      if (targetUser) {
+                                        handleRoleUpdate(targetUser._id, 'admin');
+                                        setPromoteEmail('');
+                                      } else {
+                                        toast.error("Account not identified");
+                                      }
+                                    }}
+                                    className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow hover:shadow-lg transition-all"
+                                  >
+                                    Grant Permission
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => {
-                              const targetUser = users.find(u => u.email === promoteEmail);
-                              if (targetUser) {
-                                handleRoleUpdate(targetUser._id, 'admin');
-                                setPromoteEmail('');
-                              } else {
-                                toast.error("User not found in system");
-                              }
-                            }}
-                            className="w-full mt-4 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:-translate-y-1 transition-all"
-                          >
-                            Grant Admin Access
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                        </motion.div>
+                      )}
 
-                  {/* Danger Zone */}
-                  <div className="bg-red-50/50 rounded-[2.5rem] border border-red-200 p-6 md:p-10 shadow-sm col-span-1 lg:col-span-2">
-                    <h3 className="text-xl font-black text-red-800 mb-6 md:mb-8 flex items-center gap-3">
-                      <AlertCircle className="text-red-600" /> Danger Zone
-                    </h3>
-                    <div className="bg-white rounded-2xl p-6 border border-red-100 flex flex-col md:flex-row items-center justify-between gap-6 mb-4">
-                      <div>
-                        <p className="text-sm font-black text-slate-800">System Reset (Preserve Admins)</p>
-                        <p className="text-xs font-bold text-slate-500 mt-1 max-w-md">Permanently delete all author accounts, registrations, drafts, and notifications. Admin accounts will be preserved.</p>
-                      </div>
-                      <button
-                        onClick={handleCleanupDatabase}
-                        className="w-full md:w-auto px-6 py-4 bg-red-100 bg-opacity-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-                      >
-                        <Trash2 size={16} /> Purge Database
-                      </button>
-                    </div>
+                      {settingsSubTab === 'advanced' && (
+                        <motion.div
+                          key="advanced"
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                        >
+                          <div className="bg-white border border-red-100 rounded-xl p-8 shadow-sm">
+                            <div className="flex items-center gap-3 mb-8 pb-4 border-b border-red-50">
+                               <Zap className="text-red-500" size={20} />
+                               <h3 className="text-sm font-black text-red-800 uppercase tracking-widest">Utility Operations</h3>
+                            </div>
 
-                    <div className="bg-white rounded-2xl p-6 border border-red-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                      <div>
-                        <p className="text-sm font-black text-slate-800">Clear Cloudinary Vault</p>
-                        <p className="text-xs font-bold text-slate-500 mt-1 max-w-md">Permanently delete all uploaded manuscripts, payment proofs, and files from Cloudinary storage.</p>
-                      </div>
-                      <button
-                        onClick={handleCleanupCloudinary}
-                        className="w-full md:w-auto px-6 py-4 bg-red-100 bg-opacity-50 text-red-700 hover:bg-red-600 hover:text-white border border-red-200 hover:border-red-600 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-                      >
-                        <Trash2 size={16} /> Purge Cloudinary
-                      </button>
-                    </div>
+                            <div className="space-y-4">
+                               <div className="p-5 border border-slate-100 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 hover:border-red-200 transition-colors">
+                                 <div>
+                                   <p className="text-xs font-black text-slate-800">Clean Submissions & Users</p>
+                                   <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Deletes all participations. Only system admins remain.</p>
+                                 </div>
+                                 <button
+                                   onClick={handleCleanupDatabase}
+                                   className="px-6 py-3 bg-white border border-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-black text-[9px] uppercase tracking-widest transition-all"
+                                 >
+                                   Purge Database
+                                 </button>
+                               </div>
+
+                               <div className="p-5 border border-slate-100 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 hover:border-red-200 transition-colors">
+                                 <div>
+                                   <p className="text-xs font-black text-slate-800">Clear Cloudinary Vault</p>
+                                   <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">Permanently removes all manuscripts and proof assets.</p>
+                                 </div>
+                                 <button
+                                   onClick={handleCleanupCloudinary}
+                                   className="px-6 py-3 bg-white border border-red-100 text-red-600 hover:bg-red-600 hover:text-white rounded-lg font-black text-[9px] uppercase tracking-widest transition-all"
+                                 >
+                                   Empty Filesync
+                                 </button>
+                               </div>
+
+                               <div className="mt-8 p-4 bg-red-50 rounded-lg border border-red-100 flex items-start gap-4">
+                                 <AlertCircle className="text-red-500 mt-0.5" size={16} />
+                                 <p className="text-[9px] font-bold text-red-700 leading-relaxed uppercase">
+                                   System Warning: These actions cannot be undone. Always ensure persistent backups are verified before initializing recovery scripts.
+                                 </p>
+                               </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
               </motion.div>

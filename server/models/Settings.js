@@ -9,6 +9,10 @@ const settingsSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    maintenanceMode: {
+        type: Boolean,
+        default: false
+    },
     onlinePaymentEnabled: {
         type: Boolean,
         default: true

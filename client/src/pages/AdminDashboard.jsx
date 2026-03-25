@@ -1924,7 +1924,10 @@ const AdminDashboard = () => {
                                   { id: 'registrationOpen', label: 'Registration', active: settings.registrationOpen },
                                   { id: 'onlinePaymentEnabled', label: 'Payments', active: settings.onlinePaymentEnabled },
                                   { id: 'autoAssignEnabled', label: 'Auto-Assign', active: settings.autoAssignEnabled },
+                                  { id: 'maintenanceMode', label: 'Maintenance', active: settings.maintenanceMode, alert: true },
                                   { id: 'certificatesIssued', label: 'E-Certificates', active: settings.certificatesIssued, special: true }
+
+
                                 ].map(toggle => (
                                   <div key={toggle.id} className={`p-4 border rounded-xl flex flex-col gap-4 transition-all ${toggle.special && toggle.active ? 'bg-indigo-50/50 border-indigo-200 shadow-sm shadow-indigo-100' : 'bg-slate-50 border-slate-200'}`}>
                                      <div className="flex items-center justify-between">

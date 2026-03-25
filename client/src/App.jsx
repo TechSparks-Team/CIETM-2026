@@ -1,11 +1,15 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { Toaster } from 'react-hot-toast';
 import { Monitor, X } from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from './context/AuthContext';
+
 
 // Lazy load pages for better performance
 const HomePage = lazy(() => import('./pages/HomePage'));
@@ -72,12 +76,37 @@ const ScrollToTop = () => {
 };
 
 const AppContent = () => {
+  const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+
+  useEffect(() => {
+    const checkMaintenance = async () => {
+      try {
+        const { data } = await axios.get('/api/settings');
+        if (data.maintenanceMode && user?.role !== 'admin' && location.pathname !== '/maintenance') {
+          navigate('/maintenance');
+        }
+      } catch (err) {
+        console.error("Maintenance check failed:", err);
+      }
+    };
+    
+    const isLoginPage = location.pathname === '/login' || location.pathname === '/admin/login';
+    if (location.pathname !== '/maintenance' && !isLoginPage) {
+      checkMaintenance();
+    }
+
+  }, [user, location.pathname, navigate]);
+
+
   const hideNavbar = location.pathname.startsWith('/dashboard') || 
                      location.pathname.startsWith('/admin/dashboard') ||
                      location.pathname.startsWith('/chair/dashboard') ||
                      location.pathname.startsWith('/reviewer/dashboard') ||
                      location.pathname === '/maintenance';
+
   const hideFooter = hideNavbar || location.pathname === '/register' || location.pathname === '/login' || location.pathname === '/admin/login';
 
 

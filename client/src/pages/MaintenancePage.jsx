@@ -1,10 +1,29 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Sparkles, Clock, Globe, ArrowLeft, Mail } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Settings, Sparkles, Clock, Globe, Shield, Mail } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
 
 const MaintenancePage = () => {
+  const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const verifyMaintenance = async () => {
+      try {
+        const { data } = await axios.get('/api/settings');
+        if (!data.maintenanceMode) {
+          navigate('/');
+        }
+      } catch (err) {
+        console.error("Verification failed", err);
+      }
+    };
+    verifyMaintenance();
+  }, [navigate]);
+
   return (
+
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-slate-950 font-sans selection:bg-indigo-500/30">
       {/* Dynamic Background */}
       <div className="absolute inset-0 z-0">
@@ -76,15 +95,16 @@ const MaintenancePage = () => {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-12"
         >
-          <Link to="/" className="group inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:shadow-[0_0_50px_rgba(99,102,241,0.6)] transition-all hover:scale-105">
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-            Back to Home
+          <Link to="/admin/login" className="group inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:shadow-[0_0_50px_rgba(99,102,241,0.6)] transition-all hover:scale-105">
+            <Shield size={18} className="group-hover:rotate-12 transition-transform" />
+            Admin Portal Access
           </Link>
           <a href="mailto:support@cietm2026.com" className="inline-flex items-center gap-2 px-10 py-5 bg-white/5 border border-white/10 text-white rounded-full font-black text-sm uppercase tracking-widest hover:bg-white/10 transition-all hover:border-white/20">
             <Mail size={18} />
-            Contact Support
+            Contact Technical Support
           </a>
         </motion.div>
+
 
         {/* Footer info */}
         <motion.div

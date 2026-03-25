@@ -12,6 +12,8 @@ const LoginPage = () => {
 
   // Forgot Password State
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [isMaintenance, setIsMaintenance] = useState(false);
+
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
 
@@ -33,6 +35,19 @@ const LoginPage = () => {
   const redirect = (location.state?.from && location.state.from !== '/dashboard') 
     ? location.state.from 
     : getRedirectPath(user?.role);
+
+  useEffect(() => {
+    const checkMaintenance = async () => {
+      try {
+        const { data } = await axios.get('/api/settings');
+        setIsMaintenance(data.maintenanceMode);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    checkMaintenance();
+  }, []);
+
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -140,9 +155,16 @@ const LoginPage = () => {
             <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600">
               <LogIn size={32} />
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-1 tracking-tight">Sign In</h1>
-            <p className="text-slate-500 text-sm">Welcome back! Please enter your details.</p>
+            <h1 className="text-3xl font-bold text-slate-900 mb-1 tracking-tight">
+              {location.pathname === '/admin/login' ? 'Admin Gateway' : 'Sign In'}
+            </h1>
+            <p className="text-slate-500 text-sm">
+              {isMaintenance 
+                ? 'System is currently in maintenance. Only administrators may proceed.' 
+                : 'Welcome back! Please enter your details.'}
+            </p>
           </div>
+
 
           <form onSubmit={handleSubmit} className="text-left">
             <div className="mb-4">
@@ -179,8 +201,9 @@ const LoginPage = () => {
             </div>
 
             <button type="submit" className="btn btn-primary w-full py-3.5 mt-2 justify-center shadow-indigo-500/20" disabled={loading}>
-              {loading ? 'Logging in...' : 'Sign In'} <ArrowRight size={18} />
+              {loading ? 'Authenticating...' : (isMaintenance ? 'Admin Login Only' : 'Sign In')} <ArrowRight size={18} />
             </button>
+
           </form>
 
           <div className="mt-6 flex flex-col gap-2 text-sm text-center text-slate-500">

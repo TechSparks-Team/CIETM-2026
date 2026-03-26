@@ -4,6 +4,7 @@ const Settings = require('../models/Settings');
 const PendingUser = require('../models/PendingUser');
 const generateToken = require('../utils/generateToken');
 const sendEmail = require('../utils/sendEmail');
+const { getPremiumTemplate } = require('../utils/emailTemplates');
 
 
 // @desc    Register a new user (Create PendingUser)
@@ -57,18 +58,17 @@ const registerUser = async (req, res) => {
         await sendEmail({
             email,
             subject: 'CIETM 2026 - Email Verification',
-            message: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #6366f1;">Welcome to CIETM 2026!</h2>
-                    <p>Hello ${name},</p>
-                    <p>Thank you for registering. Please verify your email to complete your account creation.</p>
-                    <p>Your verification code is:</p>
-                    <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-                        <h1 style="color: #6366f1; font-size: 32px; letter-spacing: 8px; margin: 0;">${verificationCode}</h1>
-                    </div>
-                    <p>This code will expire in 1 hour.</p>
+            message: getPremiumTemplate(`
+                <div class="tag tag-info">Welcome</div>
+                <h2>Registering for CIETM 2026</h2>
+                <p>Hello ${name},</p>
+                <p>Thank you for creating an account with Coimbatore Institute of Engineering and Technology Management. Your profile is almost complete.</p>
+                <p>Please enter the following verification code into the registration portal to activate your author credentials:</p>
+                <div class="otp-box">
+                    <h1 class="otp-code">${verificationCode}</h1>
                 </div>
-            `
+                <p>This security code will expire in 1 hour. If you did not sign up for CIETM 2026, you can safely ignore this email.</p>
+            `, 'Verification Request')
         });
         res.status(201).json({
             message: 'Verification code sent to your email. Please verify to complete registration.'
@@ -253,17 +253,16 @@ const resendVerification = async (req, res) => {
         await sendEmail({
             email,
             subject: 'CIETM 2026 - New Verification Code',
-            message: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #6366f1;">New Verification Code</h2>
-                    <p>Hello ${pendingUser.name},</p>
-                    <p>Here is your new verification code:</p>
-                    <div style="background: #f3f4f6; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
-                        <h1 style="color: #6366f1; font-size: 32px; letter-spacing: 8px; margin: 0;">${verificationCode}</h1>
-                    </div>
-                    <p>This code will expire in 1 hour.</p>
+            message: getPremiumTemplate(`
+                <div class="tag tag-info">New Session</div>
+                <h2>Resetting Your Session</h2>
+                <p>Hello ${pendingUser.name},</p>
+                <p>A new verification code was requested for your CIETM account. This code is unique to this session.</p>
+                <div class="otp-box">
+                    <h1 class="otp-code">${verificationCode}</h1>
                 </div>
-            `
+                <p>Please enter this code on the verification screen to proceed. This security session ends in 1 hour.</p>
+            `, 'New Security Code')
         });
         res.json({ message: 'New verification code sent to your email' });
     } catch (error) {
@@ -309,18 +308,21 @@ const forgotPassword = async (req, res) => {
         const frontendResetUrl = `${frontendBaseUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
 
-        const message = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #6366f1;">Password Reset Request</h2>
-                <p>You are receiving this email because you (or someone else) has requested the reset of a password.</p>
-                <p>Please click the button below to reset your password:</p>
-                <div style="text-align: center; margin: 20px 0;">
-                    <a href="${frontendResetUrl}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a>
-                </div>
-                <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
-                <p>This link will expire in 10 minutes.</p>
+
+        const message = getPremiumTemplate(`
+            <div class="tag tag-info">Security Action</div>
+            <h2>Password Reset Request</h2>
+            <p>You are receiving this email because you (or someone else) has requested the reset of a password for your CIETM 2026 account.</p>
+            <p>This request was initiated from the CIETM Author Portal. Please click the button below to establish a new password for your account:</p>
+            <div class="button-container">
+                <a href="${frontendResetUrl}" class="button">Reset Password</a>
             </div>
-        `;
+            <p>If you did not request this reset, please ignore this email and your password will remain unchanged. For security reasons, this link will expire in exactly 10 minutes.</p>
+            <div class="remarks-box">
+                <h4>System Note</h4>
+                <p>Ensure you use a strong, unique password with at least 8 characters for your research credentials.</p>
+            </div>
+        `, 'Security Update');
 
         try {
             await sendEmail({

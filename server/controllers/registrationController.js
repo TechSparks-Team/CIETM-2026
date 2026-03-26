@@ -1,5 +1,6 @@
 const Registration = require('../models/Registration');
 const sendEmail = require('../utils/sendEmail');
+const { getPremiumTemplate } = require('../utils/emailTemplates');
 const { cloudinary } = require('../config/cloudinary');
 const { createNotification } = require('./notificationController');
 const archiver = require('archiver');
@@ -250,13 +251,23 @@ const reviewPaper = async (req, res) => {
         try {
             await sendEmail({
                 email: registration.userId.email,
-                subject: `Your Paper Status: ${status}`,
-                message: `
-          <h1>Hello ${registration.userId.name},</h1>
-          <p>Your paper titled "<strong>${registration.paperDetails.title}</strong>" has been <strong>${status}</strong>.</p>
-          <p><strong>Remarks:</strong> ${remarks || 'None'}</p>
-          <p>Please log in to your dashboard for more details.</p>
-        `
+                subject: `Update: Research Paper ${status}`,
+                message: getPremiumTemplate(`
+                    <div class="tag ${status === 'Accepted' ? 'tag-success' : status === 'Rejected' ? 'tag-error' : 'tag-info'}">${status}</div>
+                    <h2>Manuscript Status Update</h2>
+                    <p>Hello ${registration.userId.name},</p>
+                    <p>Your research paper titled "<strong>${registration.paperDetails.title}</strong>" has been officially marked as <strong>${status}</strong> by the CIETM 2026 Editorial Board.</p>
+                    
+                    <div class="remarks-box">
+                        <h4>Editorial Remarks</h4>
+                        <p>${remarks || 'No detailed remarks provided at this time.'}</p>
+                    </div>
+
+                    <p>Please log in to your Author Dashboard for more details regarding your registration and the next steps for the conference.</p>
+                    <div class="button-container">
+                        <a href="${process.env.FRONTEND_URL}/dashboard" class="button">Visit Portal</a>
+                    </div>
+                `, `Status: ${status}`)
             });
         } catch (err) {
             console.error("Email failed to send", err);

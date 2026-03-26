@@ -7,7 +7,7 @@ import {
   XCircle, Search, Filter, ExternalLink, Home,
   LayoutDashboard, Download, PieChart, BarChart2,
   Settings, Bell, Mail, Shield, ChevronRight,
-  TrendingUp, IndianRupee, AlertCircle, CreditCard, Trash2, UserPlus, LogOut, RefreshCw, Zap, ChevronDown, Files, User
+  TrendingUp, IndianRupee, AlertCircle, CreditCard, Trash2, UserPlus, LogOut, RefreshCw, Zap, ChevronDown, Files, User, Lock
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -270,6 +270,21 @@ const AdminDashboard = () => {
       setIsUpdatingSettings(false);
     }
   };
+
+  const handleToggleMaintenanceMode = async () => {
+    const nextState = !settings.maintenanceMode;
+    const loadingToast = toast.loading(`${nextState ? 'Enabling' : 'Disabling'} maintenance mode...`);
+    try {
+      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      await axios.put('/api/settings', { maintenanceMode: nextState }, config);
+      setSettings({ ...settings, maintenanceMode: nextState });
+      toast.success(`Platform ${nextState ? 'Locked' : 'Unlocked'} Successfully`, { id: loadingToast });
+      fetchAllData();
+    } catch (error) {
+      toast.error("Failed to update maintenance state", { id: loadingToast });
+    }
+  };
+
 
   const handleBroadcast = async (e) => {
     e.preventDefault();
@@ -1924,7 +1939,6 @@ const AdminDashboard = () => {
                                   { id: 'registrationOpen', label: 'Registration', active: settings.registrationOpen },
                                   { id: 'onlinePaymentEnabled', label: 'Payments', active: settings.onlinePaymentEnabled },
                                   { id: 'autoAssignEnabled', label: 'Auto-Assign', active: settings.autoAssignEnabled },
-                                  { id: 'maintenanceMode', label: 'Maintenance', active: settings.maintenanceMode, alert: true },
                                   { id: 'certificatesIssued', label: 'E-Certificates', active: settings.certificatesIssued, special: true }
 
 
@@ -2199,6 +2213,32 @@ const AdminDashboard = () => {
                             </div>
 
                             <div className="space-y-4">
+                               <div className="p-5 border border-slate-100 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 hover:border-indigo-200 transition-colors">
+                                 <div className="flex items-start gap-4">
+                                   <div className={`p-3 rounded-2xl ${settings.maintenanceMode ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
+                                      <Lock size={20} />
+                                   </div>
+                                   <div>
+                                     <p className="text-xs font-black text-slate-800">Global Maintenance Mode</p>
+                                     <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">
+                                       {settings.maintenanceMode
+                                         ? 'System is currently locked. Only administrators can access the platform.'
+                                         : 'Lock the platform for scheduled maintenance or emergency updates.'}
+                                     </p>
+                                   </div>
+                                 </div>
+                                 <button
+                                   onClick={handleToggleMaintenanceMode}
+                                   className={`px-6 py-3 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all ${
+                                     settings.maintenanceMode
+                                       ? 'bg-amber-600 text-white shadow-lg shadow-amber-100'
+                                       : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                   }`}
+                                 >
+                                   {settings.maintenanceMode ? 'Disable Maintenance' : 'Enable Maintenance'}
+                                 </button>
+                               </div>
+
                                <div className="p-5 border border-slate-100 rounded-xl flex flex-col md:flex-row items-center justify-between gap-6 hover:border-red-200 transition-colors">
                                  <div>
                                    <p className="text-xs font-black text-slate-800">Clean Submissions & Users</p>

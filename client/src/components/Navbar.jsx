@@ -260,7 +260,7 @@ const Navbar = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-2xl lg:hidden z-50 transform-gpu"
+            className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-2xl lg:hidden z-50 transform-gpu max-h-[calc(100vh-80px)] overflow-y-auto"
           >
             <div className="p-6 flex flex-col gap-2">
               <div className="flex flex-col gap-1 mb-6">

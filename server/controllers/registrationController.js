@@ -733,7 +733,8 @@ async function performAutoAssignment(allowFallback = false) {
 
         // Find registrations that are submitted or under review that don't have a reviewer
         const registrations = await Registration.find({
-            status: { $in: ['Submitted', 'Under Review'] },
+            status: { $in: ['Submitted', 'Under Review', 'Accepted', 'Rejected'] },
+            'paperDetails.fileUrl': { $exists: true, $ne: '' },
             $or: [
                 { 'paperDetails.assignedReviewer': { $exists: false } },
                 { 'paperDetails.assignedReviewer': null }

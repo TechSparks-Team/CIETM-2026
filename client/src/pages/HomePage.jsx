@@ -545,7 +545,10 @@ const HomePage = () => {
                   dragConstraints={{ left: -2000, right: 2000 }}
                   className="flex gap-8 cursor-grab active:cursor-grabbing"
                   style={{
-                    animation: `scroll ${duration}s linear infinite`,
+                    animationName: 'scroll',
+                    animationDuration: `${duration}s`,
+                    animationTimingFunction: 'linear',
+                    animationIterationCount: 'infinite',
                     animationPlayState: isSpeakersPaused ? 'paused' : 'running',
                     width: 'max-content'
                   }}
@@ -716,7 +719,10 @@ const HomePage = () => {
               dragConstraints={{ left: -2000, right: 2000 }}
               className="flex gap-8 cursor-grab active:cursor-grabbing"
               style={{
-                animation: `board-scroll ${advisoryDuration}s linear infinite`,
+                animationName: 'board-scroll',
+                animationDuration: `${advisoryDuration}s`,
+                animationTimingFunction: 'linear',
+                animationIterationCount: 'infinite',
                 animationPlayState: isAdvisoryPaused ? 'paused' : 'running',
                 width: 'max-content'
               }}

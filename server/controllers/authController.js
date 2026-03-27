@@ -64,7 +64,7 @@ const registerUser = async (req, res) => {
                 <div class="tag tag-info">Welcome</div>
                 <h2>Registering for CIETM 2026</h2>
                 <p>Hello ${name},</p>
-                <p>Thank you for creating an account with Coimbatore Institute of Engineering and Technology Management. Your profile is almost complete.</p>
+                <p>Thank you for creating an account with Contemporary Innovations in Engineering, Technology & Management. Your profile is almost complete.</p>
                 <p>Please enter the following verification code into the registration portal to activate your author credentials:</p>
                 <div class="otp-box">
                     <h1 class="otp-code">${verificationCode}</h1>

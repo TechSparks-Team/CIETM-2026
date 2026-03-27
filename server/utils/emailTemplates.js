@@ -153,7 +153,7 @@ const getPremiumTemplate = (content, title = 'CIETM 2026') => {
                 <tr>
                     <td class="header">
                         <h1>CIETM 2026</h1>
-                        <p>Contemporary Innovations</p>
+                        <p>Contemporary Innovations in Engineering, Technology & Management</p>
                     </td>
                 </tr>
                 <tr>

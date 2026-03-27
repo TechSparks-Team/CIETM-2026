@@ -80,7 +80,7 @@ const exportRegistrations = async (req, res) => {
                 'Principal Author Name': reg.personalDetails?.name || reg.userId?.name,
                 'Principal Email': reg.personalDetails?.email || reg.userId?.email,
                 'Mobile Number': reg.personalDetails?.mobile || reg.userId?.phone || 'N/A',
-                'Author Type': (reg.personalDetails?.category?.toLowerCase().includes('external') || reg.personalDetails?.institution?.toLowerCase().includes('external')) ? 'External' : 'Internal',
+                'Author Type': (reg.personalDetails?.institution?.toLowerCase().includes('ciet') || reg.personalDetails?.institution?.toLowerCase().includes('coimbatore institute of engineering and technology')) ? 'Internal' : 'External',
                 'Author Category': reg.personalDetails?.category,
                 'Affiliation (Institute/Industry)': reg.personalDetails?.institution,
                 'Department': reg.personalDetails?.department,

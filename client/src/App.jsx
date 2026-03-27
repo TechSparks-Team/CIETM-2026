@@ -23,6 +23,7 @@ const ReviewerDashboard = lazy(() => import('./pages/ReviewerDashboard'));
 const TermsConditions = lazy(() => import('./pages/TermsConditions'));
 const UserGuide = lazy(() => import('./pages/UserGuide'));
 const MaintenancePage = lazy(() => import('./pages/MaintenancePage'));
+const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
 
 
 const MobileWarning = () => {
@@ -105,6 +106,7 @@ const AppContent = () => {
                      location.pathname.startsWith('/admin/dashboard') ||
                      location.pathname.startsWith('/chair/dashboard') ||
                      location.pathname.startsWith('/reviewer/dashboard') ||
+                     location.pathname.startsWith('/verify-certificate') ||
                      location.pathname === '/maintenance';
 
   const hideFooter = hideNavbar || location.pathname === '/register' || location.pathname === '/login' || location.pathname === '/admin/login';
@@ -127,6 +129,8 @@ const AppContent = () => {
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/admin/login" element={<LoginPage />} />
             <Route path="/maintenance" element={<MaintenancePage />} />
+            <Route path="/verify-certificate" element={<VerifyCertificate />} />
+            <Route path="/verify-certificate/:id" element={<VerifyCertificate />} />
 
 
             {/* Author Routes */}

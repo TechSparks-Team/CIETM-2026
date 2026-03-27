@@ -84,12 +84,14 @@ const registrationRoutes = require('./routes/registrationRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
+const certificateRoutes = require('./routes/certificateRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/registrations', registrationRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/certificate', certificateRoutes);
 
 // Serve frontend if it's built (Production / Static Hosting)
 const fs = require('fs');

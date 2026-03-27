@@ -1251,54 +1251,72 @@ const Dashboard = () => {
     );
   };
 
-  const CertificateContent = ({ name, acceptedReg }) => (
-    <div className="cert-border-main">
-      <div className="cert-border-inner">
-        {/* Corner Accents - Double Lines */}
-        <div className="line-tl-h1"></div><div className="line-tl-v1"></div>
-        <div className="line-tr-h1"></div><div className="line-tr-v1"></div>
-        <div className="line-bl-h1"></div><div className="line-bl-v1"></div>
-        <div className="line-br-h1"></div><div className="line-br-v1"></div>
+  const CertificateContent = ({ name, acceptedReg, memberIdx = 0 }) => {
+    const sfx = memberIdx > 0 ? `-${memberIdx}` : '';
+    const certId = `CIETM-2026-CERT-${acceptedReg?._id?.toString().slice(-6).toUpperCase()}${sfx}`;
+    const verifyUrl = `${window.location.origin}/verify-certificate/${acceptedReg?._id}${sfx}`;
 
-        <div className="cert-print-header">
-          <div className="text-center">
-            <h1 className="font-serif-premium text-6xl font-extrabold tracking-[0.15em] text-gold-premium uppercase leading-none mb-2">Certificate</h1>
-            <p className="font-sans text-xl font-light tracking-[0.4em] text-gold-premium uppercase">of participation</p>
-          </div>
-        </div>
+    return (
+      <>
+        {/* Corner Accents */}
+        <div className="cert-corner cert-corner-tl"><div className="cert-corner-inner"></div></div>
+        <div className="cert-corner cert-corner-tr"><div className="cert-corner-inner"></div></div>
+        <div className="cert-corner cert-corner-bl"><div className="cert-corner-inner"></div></div>
+        <div className="cert-corner cert-corner-br"><div className="cert-corner-inner"></div></div>
 
-        <div className="cert-print-body flex flex-col justify-center items-center">
-          <p className="font-lora text-[14px] font-semibold tracking-[0.2em] text-white/90 uppercase mb-4">This certificate is proudly presented to :</p>
-          <h2 className="font-script-premium text-8xl text-gold-light leading-none mb-3">{name}</h2>
-          <div className="w-[400px] h-[2px] bg-gold-premium mx-auto mb-8"></div>
-          <div className="font-sans text-[15px] leading-relaxed max-w-[85%] mx-auto text-gold-sand text-center font-normal px-10">
+        <div className="cert-border-main">
+          <div className="cert-border-inner">
+            <div className="cert-print-header">
+              <div className="cert-logo-section">
+                <div className="cert-ciet-logo">CIET<span>ESTD 2001</span></div>
+                <div className="cert-inst-info">
+                  <div className="cert-inst-name">COIMBATORE INSTITUTE OF ENGINEERING AND TECHNOLOGY</div>
+                  <div className="cert-inst-details">Autonomous | Approved by AICTE | Affiliated to AnnaUnniversity | NAAC "A" Grade</div>
+                </div>
+              </div>
+            </div>
 
-            For their active and valued participation in the <strong className="text-gold-premium font-bold text-[16px]">National Conference on Contemporary Innovations in Engineering, Technology & Management (CIETM 2026)</strong>. Their contribution titled <strong className="text-gold-premium font-bold italic">"{acceptedReg?.paperDetails?.title || 'Untitled Research'}"</strong> has significantly enriched the academic discourse of this national convention held on 29th April 2026.
-          </div>
-        </div>
+            <div className="cert-print-body flex flex-col justify-center items-center">
+              <h1 className="cert-main-title">CERTIFICATE OF PARTICIPATION</h1>
+              <br/>
+              <h2 className="cert-sub-title">The certificate is awarded to</h2>
+              <h3 className="cert-recipient-name">{name}</h3>
+              <p className="cert-for-text">for the successful presentation of a research paper titled</p>
+              
+              <div className="cert-paper-title">
+                {acceptedReg?.paperDetails?.title?.toUpperCase() || '"UNTITLED RESEARCH"'}
+              </div>
 
-        <div className="cert-print-footer flex justify-between items-end px-16 pb-10">
-          <div className="flex flex-col items-center w-64 text-center">
-            <div className="h-[2px] bg-gold-premium w-full mb-3"></div>
-            <p className="font-sans text-[18px] font-black text-white leading-none mb-1">Dr. A. Ramesh</p>
-            <p className="font-sans text-[10px] font-bold text-gold-premium uppercase tracking-[0.2em]">Conference Chair</p>
-          </div>
+              <div className="cert-conf-details">
+                at the National Conference on Contemporary Innovations in Engineering Technology & Management (CIETM-2026), 
+                organized by Coimbatore Institute of Engineering and Technology, held on 05 May 2026.
+              </div>
+            </div>
 
-          <div className="cert-seal-container scale-110">
-            <div className="cert-gold-seal flex items-center justify-center">
-              <Award size={48} className="text-white/40" />
+            <div className="cert-print-footer">
+              <div className="cert-verification-section">
+                <div className="cert-qr-container">
+                  <QRCode value={verifyUrl} size={90} level="H" />
+                </div>
+                <div className="cert-verify-details">
+                  <p className="cert-verify-msg">Verify Authenticity</p>
+                  <p className="cert-id-text-qr">ID: {certId}</p>
+                </div>
+              </div>
+
+              <div className="cert-signature-row">
+                <div className="cert-sig-box">
+                  <p className="cert-sig-name">DR. K. MANIKANDA SUBRAMANIAN</p>
+                  <p className="cert-sig-title">PRINCIPAL</p>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div className="flex flex-col items-center w-64 text-center">
-            <div className="h-[2px] bg-gold-premium w-full mb-3"></div>
-            <p className="font-sans text-[18px] font-black text-white leading-none mb-1">Dr. S. Priya</p>
-            <p className="font-sans text-[10px] font-bold text-gold-premium uppercase tracking-[0.2em]">Organizing Secretary</p>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+      </>
+    );
+  };
+
 
   const renderCertificate = () => {
 
@@ -1322,8 +1340,8 @@ const Dashboard = () => {
     }
 
     const allMembers = [
-      { name: acceptedReg?.personalDetails?.name || user.name, role: 'Principal Author' },
-      ...(acceptedReg?.teamMembers || []).map(m => ({ name: m.name, role: 'Co-Author' })),
+      { name: acceptedReg?.personalDetails?.name || user.name, role: 'Principal Author', index: 0 },
+      ...(acceptedReg?.teamMembers || []).map((m, i) => ({ name: m.name, role: 'Co-Author', index: i + 1 })),
     ];
 
     const handlePrintRequest = async (member) => {
@@ -1394,7 +1412,11 @@ const Dashboard = () => {
               <div className="aspect-[1.414/1] bg-navy-deep rounded-[1.5rem] overflow-hidden mb-6 relative border border-white/5 shadow-inner">
                 <div className="scale-[0.25] origin-top-left absolute top-0 left-0 w-[400%] pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity">
                   <div className="w-full h-full flex items-center justify-center">
-                    <CertificateContent name={member.name} acceptedReg={acceptedReg} />
+                    <CertificateContent 
+                      name={member.name} 
+                      acceptedReg={acceptedReg} 
+                      memberIdx={member.index} 
+                    />
                   </div>
                 </div>
               </div>
@@ -1427,6 +1449,7 @@ const Dashboard = () => {
                 <CertificateContent 
                   name={(selectedCertMember || allMembers[0]).name} 
                   acceptedReg={acceptedReg} 
+                  memberIdx={(selectedCertMember || allMembers[0]).index}
                 />
               )}
             </div>

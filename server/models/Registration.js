@@ -92,6 +92,15 @@ const registrationSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+    certificateId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true
+    },
+    certificateGeneratedAt: {
+        type: Date
     }
 }, {
     timestamps: true

@@ -239,6 +239,12 @@ const reviewPaper = async (req, res) => {
         registration.paperDetails.reviewStatus = status;
         registration.paperDetails.reviewerComments = remarks;
 
+        // Generate Certificate Details on Acceptance
+        if (status === 'Accepted' && !registration.certificateId) {
+            registration.certificateId = `CIETM-2026-CERT-${registration._id.toString().slice(-6).toUpperCase()}`;
+            registration.certificateGeneratedAt = new Date();
+        }
+
         await registration.save();
 
         // Create notification
@@ -475,6 +481,12 @@ const updateRegistrationStatus = async (req, res) => {
         if (status) {
             registration.status = status;
             registration.paperDetails.reviewStatus = status;
+
+            // Generate Certificate Details on Acceptance
+            if (status === 'Accepted' && !registration.certificateId) {
+                registration.certificateId = `CIETM-2026-CERT-${registration._id.toString().slice(-6).toUpperCase()}`;
+                registration.certificateGeneratedAt = new Date();
+            }
         }
         if (paymentStatus) registration.paymentStatus = paymentStatus;
         if (transactionId) registration.transactionId = transactionId;

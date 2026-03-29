@@ -179,7 +179,7 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
           <div className="space-y-4">
             <div>
               <label className={labelClass}>Full Name</label>
-              <input value={formData.name} disabled className={inputClass + " bg-slate-100 italic"} />
+              <input name="name" value={formData.name} onChange={handleChange} className={inputClass} placeholder="Enter full name" />
             </div>
             <div>
               <label className={labelClass}>Email Address</label>

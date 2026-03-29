@@ -853,13 +853,13 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
               <div className="flex justify-between mb-4 flex-col gap-2">
                 <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100 mb-1">
                   <span className="text-sm font-bold text-slate-600">Main Author ({formData.category})</span>
-                  <span className="text-sm font-bold text-slate-900">₹{registrationCategories[formData.category]?.fee || 0}</span>
+                  <span className="text-sm font-bold text-slate-900">₹{CATEGORY_AMOUNTS[formData.category] || 0}</span>
                 </div>
 
                 {formData.teamMembers.filter(m => m.name && m.name.trim() !== '').map((m, idx) => (
                   <div key={idx} className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100 mb-1">
                     <span className="text-sm font-bold text-slate-600">Co-author {idx + 1} ({m.category})</span>
-                    <span className="text-sm font-bold text-slate-900">₹{registrationCategories[m.category]?.fee || 0}</span>
+                    <span className="text-sm font-bold text-slate-900">₹{CATEGORY_AMOUNTS[m.category] || 0}</span>
                   </div>
                 ))}
 

@@ -193,8 +193,8 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
 
 
   const addTeamMember = () => {
-    if (formData.teamMembers.length >= 3) {
-      toast.error("Maximum 3 co-authors are allowed");
+    if (formData.teamMembers.length >= 4) {
+      toast.error("Maximum 4 co-authors are allowed");
       return;
     }
 
@@ -773,15 +773,15 @@ const RegistrationForm = ({ startStep = 1, showAccountCreation = true, onSuccess
             <div className="flex flex-col gap-3">
               <button
                 onClick={addTeamMember}
-                disabled={formData.teamMembers.length >= 3}
-                className={`btn btn-outline w-full md:w-auto ${formData.teamMembers.length >= 3 ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400' : ''}`}
+                disabled={formData.teamMembers.length >= 4}
+                className={`btn btn-outline w-full md:w-auto ${formData.teamMembers.length >= 4 ? 'opacity-50 cursor-not-allowed border-slate-200 text-slate-400' : ''}`}
               >
                 + Add Co-author
               </button>
-              {formData.teamMembers.length >= 3 && (
+              {formData.teamMembers.length >= 4 && (
                 <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                  Maximum limit of 3 co-authors reached
+                  Maximum limit of 4 co-authors reached
                 </p>
               )}
             </div>

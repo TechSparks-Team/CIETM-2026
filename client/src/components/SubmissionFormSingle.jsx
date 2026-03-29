@@ -65,7 +65,7 @@ const SubmissionFormSingle = ({ registration, user, onSuccess, onCancel }) => {
   };
 
   const addTeamMember = () => {
-    if (formData.teamMembers.length >= 3) return toast.error("Maximum 3 co-authors allowed");
+    if (formData.teamMembers.length >= 4) return toast.error("Maximum 4 co-authors allowed");
     setFormData({
       ...formData,
       teamMembers: [...formData.teamMembers, { name: '', email: '', mobile: '', affiliation: '', department: '', designation: '', areaOfSpecialization: '', yearOfStudy: '', category: 'UG/PG STUDENTS' }]

@@ -475,17 +475,35 @@ const ChairDashboard = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
+      {/* Sidebar Overlay */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[65] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col z-[70] transition-transform duration-300 lg:static lg:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-8 pb-4">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-              <Shield size={20} />
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                <Shield size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-black tracking-tighter text-slate-800 leading-none">CIETM</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Chair / Editor</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-black tracking-tighter text-slate-800 leading-none">CIETM</h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Chair / Editor</p>
-            </div>
+            <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-slate-600 bg-slate-50 rounded-xl transition-all">
+              <X size={18} />
+            </button>
           </div>
 
           <nav className="space-y-1">
@@ -547,44 +565,45 @@ const ChairDashboard = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 flex items-center justify-between z-40">
-           <div className="flex items-center gap-4">
-            <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-600"><Menu size={20} /></button>
-            <h1 className="text-xl font-black text-slate-800 uppercase tracking-tight">{activeTab}</h1>
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-4 md:px-6 flex items-center justify-between z-40">
+           <div className="flex items-center gap-2 md:gap-4">
+            <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2 text-slate-600 hover:bg-slate-50 rounded-xl transition-all"><Menu size={20} /></button>
+            <h1 className="text-lg md:text-xl font-black text-slate-800 uppercase tracking-tight truncate max-w-[120px] sm:max-w-none">{activeTab}</h1>
           </div>
-          <div className="flex items-center gap-3">
-             {refreshing && <div className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>}
-             <button onClick={fetchData} className="p-3 md:px-4 md:py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2">
-               <RefreshCw size={14} className={`${refreshing ? 'animate-spin' : ''}`} /> Force Sync
+          <div className="flex items-center gap-1.5 md:gap-3">
+             {refreshing && <div className="w-3 h-3 md:w-4 md:h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>}
+             <button onClick={fetchData} className="p-2.5 md:px-4 md:py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2" title="Force Sync">
+               <RefreshCw size={14} className={`${refreshing ? 'animate-spin' : ''}`} /> 
+               <span className="hidden sm:inline">Force Sync</span>
              </button>
-             <button title="Export to Excel" onClick={exportToExcel} className="p-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
+             <button title="Export to Excel" onClick={exportToExcel} className="p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
                <Download size={18} className="text-blue-600" />
                <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline text-slate-600">Export XLSX</span>
              </button>
              <button
-               title="Download All Manuscripts (ZIP)"
-               onClick={() => {
-                 const toastId = toast.loading("Generating bulk manuscripts archive...");
-                 const downloadUrl = `/api/registrations/download-all?token=${user.token}`;
-                 const link = document.createElement('a');
-                 link.href = downloadUrl;
-                 link.setAttribute('download', '');
-                 document.body.appendChild(link);
-                 link.click();
-                 document.body.removeChild(link);
-                 setTimeout(() => {
-                   toast.dismiss(toastId);
-                   fetchData();
-                 }, 4000);
-               }}
-               className="p-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2"
+                title="Download All Manuscripts (ZIP)"
+                onClick={() => {
+                  const toastId = toast.loading("Generating bulk manuscripts archive...");
+                  const downloadUrl = `/api/registrations/download-all?token=${user.token}`;
+                  const link = document.createElement('a');
+                  link.href = downloadUrl;
+                  link.setAttribute('download', '');
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  setTimeout(() => {
+                    toast.dismiss(toastId);
+                    fetchData();
+                  }, 4000);
+                }}
+                className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center gap-2"
              >
                 <Download size={18} />
                 <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline">Download ZIP</span>
              </button>
             <button
               onClick={logout}
-              className="p-3 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all shadow-sm flex items-center gap-2"
+              className="p-2.5 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all shadow-sm flex items-center gap-2"
               title="Sign Out"
             >
               <LogOut size={18} />
@@ -682,12 +701,12 @@ const ChairDashboard = () => {
                           const percentage = Math.round((count / (filteredData.length || 1)) * 100);
                           return (
                              <div key={track.id} className="group cursor-default">
-                                <div className="flex justify-between items-end mb-2">
-                                   <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-[10px] group-hover:bg-indigo-600 group-hover:text-white transition-all">0{idx + 1}</div>
-                                      <p className="text-[11px] font-extrabold text-slate-700 uppercase tracking-tight max-w-[200px] md:max-w-none truncate">{track.label.split(': ')[1]}</p>
+                                <div className="flex justify-between items-end mb-2 gap-4">
+                                   <div className="flex items-center gap-3 min-w-0 flex-1">
+                                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-[10px] group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0">0{idx + 1}</div>
+                                      <p className="text-[11px] font-extrabold text-slate-700 uppercase tracking-tight truncate">{track.label.split(': ')[1]}</p>
                                    </div>
-                                   <div className="text-right">
+                                   <div className="text-right shrink-0">
                                       <span className="text-[11px] font-black text-slate-800">{count}</span>
                                       <span className="text-[9px] font-bold text-slate-400 ml-1">Papers</span>
                                    </div>

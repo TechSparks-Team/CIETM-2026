@@ -94,8 +94,8 @@ const exportRegistrations = async (req, res) => {
                 'Payment Date': reg.paymentStatus === 'Completed' ? new Date(reg.updatedAt).toLocaleDateString() : 'N/A'
             };
 
-            // Flatten Co-Authors (Up to 3)
-            for (let i = 0; i < 3; i++) {
+            // Flatten Co-Authors (Up to 4)
+            for (let i = 0; i < 4; i++) {
                 const member = reg.teamMembers && reg.teamMembers[i];
                 const prefix = `Co-Author ${i + 1}`;
                 data[`${prefix} Name`] = member?.name || '';

@@ -166,11 +166,12 @@ const HomePage = () => {
     { name: "Dr. K. Pushpalatha", affiliation: "Dean - School of computing", img: "/advisory/pushpalatha.jpeg" },
     { name: "Dr. S. Gokul", affiliation: "Associate Professor and Head - EEE, Dean - Affiliations and Approvals", img: "/advisory/Gokul Shanmugan.jpeg" },
     { name: "Dr. D. Seenivasan", affiliation: "Professor & Head - MECH", img: "/advisory/seenivasan.jpg" },
-    { name: "Dr.N.Mohan Raj", affiliation: "Professor & Head - MCT", img: "/advisory/mohan.jpeg" },
+    { name: "Dr. N. Mohan Raj", affiliation: "Professor & Head - MCT", img: "/advisory/mohan.jpeg" },
     { name: "Dr. N. R. Deepa", affiliation: "Associate Professor and Head - IT", img: "/advisory/dheepa.jpeg" },
     { name: "Dr. S. Priyadharshini", affiliation: "Associate Professor and Head - Management Studies", img: "/advisory/priyadharshini.jpg" },
     { name: "Dr. A. Umaamaheshvari", affiliation: "Associate Professor and Head - ECE", img: "/advisory/umaamaheshvari.png" },
     { name: "Dr. E. Gomathi", affiliation: "Associate Professor & Head - AI&DS", img: "/advisory/gomathi.jpeg" },
+    { name: "Dr. Ashok", affiliation: "Associate Professor & Head - VLSI", img: "/advisory/ashok1.png" },
   ];
 
   // Calculate duration based on total width to maintain constant velocity (80px/s)
@@ -565,12 +566,11 @@ const HomePage = () => {
                 </motion.div>
               </>
             ) : (
-              <div className={`grid gap-6 justify-center items-stretch mx-auto ${
-                speakers.length === 1 ? 'max-w-md grid-cols-1' :
+              <div className={`grid gap-6 justify-center items-stretch mx-auto ${speakers.length === 1 ? 'max-w-md grid-cols-1' :
                 speakers.length === 2 ? 'max-w-2xl grid-cols-1 sm:grid-cols-2' :
-                speakers.length === 3 ? 'max-w-3xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
-                'max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
-              }`}>
+                  speakers.length === 3 ? 'max-w-3xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+                    'max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'
+                }`}>
                 {speakers.map((s, i) => (
                   <SpeakerCard key={i} s={s} />
                 ))}
@@ -616,10 +616,10 @@ const HomePage = () => {
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="mb-7 inline-block relative w-full overflow-hidden rounded-[20px]">
                     {p.img ? (
-                      <img 
-                        src={p.img} 
-                        alt={p.name} 
-                        className="w-full aspect-[4/3] object-cover border-4 border-slate-50 bg-slate-100 shadow-sm transition-transform duration-500 group-hover:scale-110" 
+                      <img
+                        src={p.img}
+                        alt={p.name}
+                        className="w-full aspect-[4/3] object-cover border-4 border-slate-50 bg-slate-100 shadow-sm transition-transform duration-500 group-hover:scale-110"
                       />
                     ) : (
                       <div className="w-full aspect-[4/3] bg-slate-100 text-slate-500 flex items-center justify-center shadow-sm">
@@ -646,10 +646,10 @@ const HomePage = () => {
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="mb-7 inline-block relative w-full overflow-hidden rounded-[20px]">
                     {p.img ? (
-                      <img 
-                        src={p.img} 
-                        alt={p.name} 
-                        className="w-full aspect-[4/3] object-cover border-4 border-slate-50 bg-indigo-50 text-indigo-600 shadow-sm transition-transform duration-500 group-hover:scale-110" 
+                      <img
+                        src={p.img}
+                        alt={p.name}
+                        className="w-full aspect-[4/3] object-cover border-4 border-slate-50 bg-indigo-50 text-indigo-600 shadow-sm transition-transform duration-500 group-hover:scale-110"
                       />
                     ) : (
                       <div className="w-full aspect-[4/3] bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-sm">
@@ -677,10 +677,10 @@ const HomePage = () => {
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="mb-7 inline-block relative w-full overflow-hidden rounded-[20px]">
                     {p.img ? (
-                      <img 
-                        src={p.img} 
-                        alt={p.name} 
-                        className="w-full aspect-square object-cover object-top border-4 border-slate-50 bg-blue-50 shadow-sm transition-transform duration-500 group-hover:scale-110" 
+                      <img
+                        src={p.img}
+                        alt={p.name}
+                        className="w-full aspect-square object-cover object-top border-4 border-slate-50 bg-blue-50 shadow-sm transition-transform duration-500 group-hover:scale-110"
                       />
                     ) : (
                       <div className="w-full aspect-square bg-blue-50 text-indigo-600 flex items-center justify-center shadow-sm">
@@ -737,7 +737,7 @@ const HomePage = () => {
                 <motion.div
                   key={i}
                   whileHover={{ y: -5 }}
-                  className="w-[220px] shrink-0 bg-white rounded-[20px] overflow-hidden border border-slate-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_50px_-12px_rgba(99,102,241,0.2)] transition-all duration-500 group/card h-[310px] flex flex-col"
+                  className="w-[220px] shrink-0 bg-white rounded-[20px] overflow-hidden border border-slate-100 shadow-[0_15px_50px_-10px_rgba(0,0,0,0.12)] hover:shadow-[0_30px_80px_-20px_rgba(99,102,241,0.3)] transition-all duration-500 group/card h-[310px] flex flex-col"
                 >
                   <div className="relative h-[200px] overflow-hidden bg-slate-100">
                     <img src={item.img} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" />
@@ -780,7 +780,7 @@ const HomePage = () => {
           <div className="relative">
             {/* Mobile Scroll Hint - Left */}
             <div className="absolute left-0 top-0 bottom-10 w-12 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none md:hidden opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            
+
             {/* Mobile Scroll Hint - Right */}
             <div className="absolute right-0 top-0 bottom-10 w-12 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none md:hidden transition-opacity"></div>
 
@@ -932,7 +932,7 @@ const HomePage = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            
+
             {/* Left Side: Developers Image */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
@@ -945,97 +945,95 @@ const HomePage = () => {
                 animate={{ y: [-10, 10, -10] }}
                 transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
               >
-              <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 rounded-[3rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000"></div>
-              <div className="relative rounded-[2.5rem] overflow-hidden border-[8px] border-white shadow-2xl bg-white group aspect-[4/5] md:aspect-[3/4]">
-                {/* Click outside overlay */}
-                {activeDev !== null && (
-                  <div 
-                    className="absolute inset-0 z-10 cursor-default" 
-                    onClick={() => setActiveDev(null)} 
+                <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 rounded-[3rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000"></div>
+                <div className="relative rounded-[2.5rem] overflow-hidden border-[8px] border-white shadow-2xl bg-white group aspect-[4/5] md:aspect-[3/4]">
+                  {/* Click outside overlay */}
+                  {activeDev !== null && (
+                    <div
+                      className="absolute inset-0 z-10 cursor-default"
+                      onClick={() => setActiveDev(null)}
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 opacity-70 group-hover:opacity-50 transition-opacity duration-500"></div>
+                  <img
+                    src="/assets/developers.jpg"
+                    alt="IT Department Developers"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "/assets/developers.png";
+                    }}
+                    className="w-full h-full object-cover"
                   />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent z-10 opacity-70 group-hover:opacity-50 transition-opacity duration-500"></div>
-                <img
-                  src="/assets/developers.jpg"
-                  alt="IT Department Developers"
-                  onError={(e) => { 
-                    e.target.onerror = null; 
-                    e.target.src = "/assets/developers.png"; 
-                  }}
-                  className="w-full h-full object-cover"
-                />
 
-                {/* Interactive Area Hitboxes for Developers */}
-                {[
-                  { id: 1, name: "Vijaya Prasath", quote: "Dreaming in Code", pos: { top: '20%', left: '9%', width: '40%', height: '40%' }, align: 'right', linkedin: "#", github: "#", portfolio: "#" },
-                  { id: 2, name: "Gowshik K", quote: "Crafting Experiences", pos: { top: '20%', right: '13%', width: '45%', height: '50%' }, align: 'left', linkedin: "#", github: "#", portfolio: "#" },
-                  { id: 3, name: "Jenisha J", quote: "Designing the Web", pos: { bottom: '15%', left: '0', width: '35%', height: '45%' }, align: 'right', linkedin: "#", github: "#", portfolio: "#" },
-                  { id: 4, name: "Rithika R", quote: "Breaking Boundaries", pos: { bottom: '20%', right: '0', width: '30%', height: '45%' }, align: 'left', linkedin: "#", github: "#", portfolio: "#" }
-                ].map((dev, idx) => {
-                  const isActive = activeDev === dev.id;
-                  const isOtherActive = activeDev !== null && activeDev !== dev.id;
+                  {/* Interactive Area Hitboxes for Developers */}
+                  {[
+                    { id: 1, name: "Vijaya Prasath", quote: "Dreaming in Code", pos: { top: '20%', left: '9%', width: '40%', height: '40%' }, align: 'right', linkedin: "#", github: "#", portfolio: "#" },
+                    { id: 2, name: "Gowshik K", quote: "Crafting Experiences", pos: { top: '20%', right: '13%', width: '45%', height: '50%' }, align: 'left', linkedin: "#", github: "#", portfolio: "#" },
+                    { id: 3, name: "Jenisha J", quote: "Designing the Web", pos: { bottom: '15%', left: '0', width: '35%', height: '45%' }, align: 'right', linkedin: "#", github: "#", portfolio: "#" },
+                    { id: 4, name: "Rithika R", quote: "Breaking Boundaries", pos: { bottom: '20%', right: '0', width: '30%', height: '45%' }, align: 'left', linkedin: "#", github: "#", portfolio: "#" }
+                  ].map((dev, idx) => {
+                    const isActive = activeDev === dev.id;
+                    const isOtherActive = activeDev !== null && activeDev !== dev.id;
 
-                  return (
-                    <div key={idx} className={`absolute group/hotspot ${isActive ? 'z-40' : 'z-30'}`} style={dev.pos}>
-                      {/* Invisible Hitbox Area */}
-                      <button 
-                        type="button"
-                        tabIndex="0" 
-                        className={`absolute inset-0 w-full h-full cursor-pointer outline-none transition-all duration-300 rounded-[2.5rem] z-20 ${
-                          isActive ? 'bg-indigo-500/10 border-2 border-indigo-500/30' : 
-                          'focus:bg-white/10 hover:bg-white/10 border-2 border-transparent'
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveDev(isActive ? null : dev.id);
-                        }}
-                        aria-label={`View ${dev.name}'s profile`}
-                      ></button>
-                      
-                      {/* Popover Card */}
-                      <div className={`absolute transition-all duration-300 transform z-50 w-40 md:w-48 bg-white/95 backdrop-blur-xl rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-white/40 top-1/2 -translate-y-1/2 ${dev.align === 'right' ? 'left-full ml-2 md:ml-4' : 'right-full mr-2 md:mr-4'} ${
-                        isActive ? 'opacity-100 pointer-events-auto scale-100' :
-                        isOtherActive ? 'opacity-0 pointer-events-none scale-95' :
-                        'opacity-0 pointer-events-none scale-95 group-hover/hotspot:opacity-100 group-hover/hotspot:pointer-events-auto group-hover/hotspot:scale-100'
-                      }`}>
-                        {/* Arrow */}
-                        <div className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white/95 rotate-45 ${dev.align === 'right' ? '-left-2 border-b border-l border-white/40' : '-right-2 border-t border-r border-white/40'}`}></div>
-                        <div className="relative text-center">
-                          <h5 className="font-bold text-slate-800 text-sm mb-0.5">{dev.name}</h5>
-                          <p className="text-[0.65rem] font-bold tracking-wider uppercase text-indigo-500 mb-3 hover:text-indigo-600 transition-colors">"{dev.quote}"</p>
-                          <div className="flex gap-2 justify-center">
-                            <a href={dev.github} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-900 hover:text-white transition-colors border border-slate-200" title="GitHub">
-                              <Github size={14} />
-                            </a>
-                            <a href={dev.linkedin} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-indigo-600 hover:text-white transition-colors border border-slate-200" title="LinkedIn">
-                              <Linkedin size={14} />
-                            </a>
-                            <a href={dev.portfolio} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-sky-500 hover:text-white transition-colors border border-slate-200" title="Portfolio">
-                              <Globe size={14} />
-                            </a>
+                    return (
+                      <div key={idx} className={`absolute group/hotspot ${isActive ? 'z-40' : 'z-30'}`} style={dev.pos}>
+                        {/* Invisible Hitbox Area */}
+                        <button
+                          type="button"
+                          tabIndex="0"
+                          className={`absolute inset-0 w-full h-full cursor-pointer outline-none transition-all duration-300 rounded-[2.5rem] z-20 ${isActive ? 'bg-indigo-500/10 border-2 border-indigo-500/30' :
+                            'focus:bg-white/10 hover:bg-white/10 border-2 border-transparent'
+                            }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDev(isActive ? null : dev.id);
+                          }}
+                          aria-label={`View ${dev.name}'s profile`}
+                        ></button>
+
+                        {/* Popover Card */}
+                        <div className={`absolute transition-all duration-300 transform z-50 w-40 md:w-48 bg-white/95 backdrop-blur-xl rounded-2xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-white/40 top-1/2 -translate-y-1/2 ${dev.align === 'right' ? 'left-full ml-2 md:ml-4' : 'right-full mr-2 md:mr-4'} ${isActive ? 'opacity-100 pointer-events-auto scale-100' :
+                          isOtherActive ? 'opacity-0 pointer-events-none scale-95' :
+                            'opacity-0 pointer-events-none scale-95 group-hover/hotspot:opacity-100 group-hover/hotspot:pointer-events-auto group-hover/hotspot:scale-100'
+                          }`}>
+                          {/* Arrow */}
+                          <div className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white/95 rotate-45 ${dev.align === 'right' ? '-left-2 border-b border-l border-white/40' : '-right-2 border-t border-r border-white/40'}`}></div>
+                          <div className="relative text-center">
+                            <h5 className="font-bold text-slate-800 text-sm mb-0.5">{dev.name}</h5>
+                            <p className="text-[0.65rem] font-bold tracking-wider uppercase text-indigo-500 mb-3 hover:text-indigo-600 transition-colors">"{dev.quote}"</p>
+                            <div className="flex gap-2 justify-center">
+                              <a href={dev.github} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-900 hover:text-white transition-colors border border-slate-200" title="GitHub">
+                                <Github size={14} />
+                              </a>
+                              <a href={dev.linkedin} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-indigo-600 hover:text-white transition-colors border border-slate-200" title="LinkedIn">
+                                <Linkedin size={14} />
+                              </a>
+                              <a href={dev.portfolio} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-sky-500 hover:text-white transition-colors border border-slate-200" title="Portfolio">
+                                <Globe size={14} />
+                              </a>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-                
-                {/* Floating Badge */}
-                <div className="absolute top-6 right-6 z-20 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-white/50 flex items-center gap-2">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-xs font-black text-slate-800 tracking-wider">IT BATCH '27</span>
-                </div>
+                    );
+                  })}
 
-                <div className="absolute bottom-0 left-0 right-0 z-20 p-6 md:p-8">
-                  <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 md:p-5 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-                    <p className="text-white font-black text-center uppercase tracking-[0.2em] text-sm md:text-base mb-1 drop-shadow-lg">Creative Minds</p>
-                    <p className="text-indigo-200 text-xs md:text-sm text-center font-bold tracking-widest uppercase">Dept. of Information Technology</p>
+                  {/* Floating Badge */}
+                  <div className="absolute top-6 right-6 z-20 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-white/50 flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-xs font-black text-slate-800 tracking-wider">IT BATCH '27</span>
+                  </div>
+
+                  <div className="absolute bottom-0 left-0 right-0 z-20 p-6 md:p-8">
+                    <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 md:p-5 border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+                      <p className="text-white font-black text-center uppercase tracking-[0.2em] text-sm md:text-base mb-1 drop-shadow-lg">Creative Minds</p>
+                      <p className="text-indigo-200 text-xs md:text-sm text-center font-bold tracking-widest uppercase">Dept. of Information Technology</p>
+                    </div>
                   </div>
                 </div>
-              </div>
               </motion.div>
             </motion.div>
 
@@ -1056,19 +1054,19 @@ const HomePage = () => {
                   </span>
                 </span>
                 <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-tight mb-6 relative">
-                  Engineered by <br className="hidden lg:block"/>
+                  Engineered by <br className="hidden lg:block" />
                   <span className="relative inline-block">
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 animate-gradient-x">IT Students</span>
                     <svg className="absolute w-full h-3 -bottom-1 left-0 text-indigo-500/40" viewBox="0 0 100 10" preserveAspectRatio="none">
-                      <motion.path 
+                      <motion.path
                         initial={{ pathLength: 0, opacity: 0 }}
                         whileInView={{ pathLength: 1, opacity: 1 }}
                         viewport={{ once: true }}
                         transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
-                        d="M0 5 Q 50 -5 100 5" 
-                        stroke="currentColor" 
-                        strokeWidth="3" 
-                        fill="none" 
+                        d="M0 5 Q 50 -5 100 5"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        fill="none"
                       />
                     </svg>
                   </span>

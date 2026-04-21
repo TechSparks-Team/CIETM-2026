@@ -171,7 +171,7 @@ const HomePage = () => {
     { name: "Dr. S. Priyadharshini", affiliation: "Associate Professor and Head - Management Studies", img: "/advisory/priyadharshini.jpg" },
     { name: "Dr. A. Umaamaheshvari", affiliation: "Associate Professor and Head - ECE", img: "/advisory/umaamaheshvari.png" },
     { name: "Dr. E. Gomathi", affiliation: "Associate Professor & Head - AI&DS", img: "/advisory/gomathi.jpeg" },
-    { name: "Dr. Ashok", affiliation: "Associate Professor & Head - VLSI", img: "/advisory/ashok1.png" },
+    { name: "Dr. k. Ashok", affiliation: "Associate Professor & Head - VLSI", img: "/advisory/ashok1.png" },
   ];
 
   // Calculate duration based on total width to maintain constant velocity (80px/s)

@@ -802,7 +802,7 @@ const Dashboard = () => {
                   {reg.paperId || `Paper-${reg._id.slice(-4).toUpperCase()}`}
                 </span>
                 <span className="text-[8px] font-bold uppercase tracking-[0.15em] opacity-60">
-                   {reg.status || 'Draft'}
+                  {reg.status || 'Draft'}
                 </span>
               </div>
               {!['Accepted', 'Rejected'].includes(reg.status) && activeRegistrationId === reg._id && (
@@ -1285,17 +1285,17 @@ const Dashboard = () => {
 
             <div className="cert-print-body flex flex-col justify-center items-center">
               <h1 className="cert-main-title">CERTIFICATE OF PARTICIPATION</h1>
-              <br/>
+              <br />
               <h2 className="cert-sub-title">The certificate is awarded to</h2>
               <h3 className="cert-recipient-name">{name}</h3>
               <p className="cert-for-text">for the successful presentation of a research paper titled</p>
-              
+
               <div className="cert-paper-title">
                 {acceptedReg?.paperDetails?.title?.toUpperCase() || '"UNTITLED RESEARCH"'}
               </div>
 
               <div className="cert-conf-details">
-                at the National Conference on Contemporary Innovations in Engineering Technology & Management (CIETM-2026), 
+                at the National Conference on Contemporary Innovations in Engineering Technology & Management (CIETM-2026),
                 organized by Coimbatore Institute of Engineering and Technology, held on 05 May 2026.
               </div>
             </div>
@@ -1354,7 +1354,7 @@ const Dashboard = () => {
     const handlePrintRequest = async (member) => {
       setSelectedCertMember(member);
       setIsGeneratingPDF(true);
-      
+
       const originalTitle = document.title;
       document.title = `CIETM_Certificate_${member.name.replace(/\s+/g, '_')}`;
 
@@ -1376,9 +1376,9 @@ const Dashboard = () => {
         {/* Processing State Overlay */}
         <AnimatePresence>
           {isGeneratingPDF && (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[200] bg-white/90 backdrop-blur-md flex flex-col items-center justify-center gap-6"
             >
@@ -1415,22 +1415,21 @@ const Dashboard = () => {
         {/* Paper Switcher - Only if multiple papers accepted */}
         {acceptedPapers.length > 1 && (
           <div className="flex flex-col gap-4">
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Select Active Paper Registry</span>
-             <div className="flex flex-wrap gap-3">
-               {acceptedPapers.map((paper) => (
-                 <button
-                   key={paper._id}
-                   onClick={() => setActiveRegistrationId(paper._id)}
-                   className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                     acceptedReg?._id === paper._id 
-                       ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 -translate-y-1' 
-                       : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-600'
-                   }`}
-                 >
-                   {paper.paperId} : {paper.paperDetails?.title?.slice(0, 30)}...
-                 </button>
-               ))}
-             </div>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Select Active Paper Registry</span>
+            <div className="flex flex-wrap gap-3">
+              {acceptedPapers.map((paper) => (
+                <button
+                  key={paper._id}
+                  onClick={() => setActiveRegistrationId(paper._id)}
+                  className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${acceptedReg?._id === paper._id
+                      ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 -translate-y-1'
+                      : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-600'
+                    }`}
+                >
+                  {paper.paperId} : {paper.paperDetails?.title?.slice(0, 30)}...
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1443,10 +1442,10 @@ const Dashboard = () => {
               <div className="aspect-[1.414/1] bg-navy-deep rounded-[1.5rem] overflow-hidden mb-6 relative border border-white/5 shadow-inner">
                 <div className="scale-[0.25] origin-top-left absolute top-0 left-0 w-[400%] pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity">
                   <div className="w-full h-full flex items-center justify-center">
-                    <CertificateContent 
-                      name={member.name} 
-                      acceptedReg={acceptedReg} 
-                      memberIdx={member.index} 
+                    <CertificateContent
+                      name={member.name}
+                      acceptedReg={acceptedReg}
+                      memberIdx={member.index}
                     />
                   </div>
                 </div>
@@ -1477,9 +1476,9 @@ const Dashboard = () => {
           <div className="print-certificate-view no-screen">
             <div className="certificate-paper print-only">
               {(selectedCertMember || allMembers[0]) && (
-                <CertificateContent 
-                  name={(selectedCertMember || allMembers[0]).name} 
-                  acceptedReg={acceptedReg} 
+                <CertificateContent
+                  name={(selectedCertMember || allMembers[0]).name}
+                  acceptedReg={acceptedReg}
                   memberIdx={(selectedCertMember || allMembers[0]).index}
                 />
               )}

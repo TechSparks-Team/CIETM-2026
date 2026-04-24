@@ -541,18 +541,10 @@ This project is licensed under the **MIT License** - see the [LICENSE](./LICENSE
 
 ---
 
-## 👨‍💼 Support & Contact
+## 📞 Contact
 
 - **Documentation**: See README sections above
-- **Issues**: Report on GitHub Issues
-- **Email**: support@cietm.online (if applicable)
+- **Issues**: Open an issue on GitHub
+- **Email**: support@cietm.online
 
----
 
-<div align="center">
-
-**Made with ❤️ by the CIETM Development Team**
-
-[GitHub](https://github.com) • [Website](https://cietm.online) • [Documentation](#)
-
-</div>

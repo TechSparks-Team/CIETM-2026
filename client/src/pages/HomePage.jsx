@@ -941,10 +941,7 @@ const HomePage = () => {
               transition={{ duration: 0.8, ease: "easeOut" }}
               className="relative w-full max-w-md mx-auto lg:mx-0 lg:max-w-none"
             >
-              <motion.div
-                animate={{ y: [-10, 10, -10] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              >
+
                 <div className="absolute -inset-4 bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 rounded-[3rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000"></div>
                 <div className="relative rounded-[2.5rem] overflow-hidden border-[8px] border-white shadow-2xl bg-white group aspect-[4/5] md:aspect-[3/4]">
                   {/* Click outside overlay */}
@@ -1034,7 +1031,6 @@ const HomePage = () => {
                     </div>
                   </div>
                 </div>
-              </motion.div>
             </motion.div>
 
             {/* Right Side: Content */}

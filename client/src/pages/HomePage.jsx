@@ -151,13 +151,6 @@ const HomePage = () => {
       affiliation: "Professor - Manufacturing Engineering, Anna University, Chennai.",
       bio: "Academician with expertise in manufacturing technologies and industrial innovations.",
       img: "/speakers/omkumar.jpeg"
-    },
-    {
-      name: "Dr. T. V. Arjunan",
-      role: "Keynote Speaker",
-      affiliation: "Professor - Mechanical Engineering, Guru Ghasidas Vishwavidyalaya, Bilaspur.",
-      bio: "Researcher focusing on advanced mechanical systems and thermal engineering applications.",
-      img: "/speakers/arjunan.jpeg"
     }
   ];
 

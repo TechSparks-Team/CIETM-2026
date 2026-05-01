@@ -74,7 +74,13 @@ const exportRegistrations = async (req, res) => {
         const { status, paymentStatus, track, category, attended, authorType, columns } = req.query;
         const query = {};
 
-        if (status && status !== 'All') query.status = status;
+        if (status && status !== 'All') {
+            if (status === 'Pending') {
+                query.status = { $in: ['Submitted', 'Under Review'] };
+            } else {
+                query.status = status;
+            }
+        }
         if (paymentStatus && paymentStatus !== 'All') query.paymentStatus = paymentStatus;
         if (track && track !== 'All') query['paperDetails.track'] = track;
         if (category && category !== 'All') query['personalDetails.category'] = category;

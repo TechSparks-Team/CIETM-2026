@@ -888,6 +888,7 @@ const AdminDashboard = () => {
                       <option value="All">All Statuses</option>
                       <option value="Draft">Draft</option>
                       <option value="Submitted">Submitted</option>
+                      <option value="Pending">Pending</option>
                       <option value="Under Review">Under Review</option>
                       <option value="Accepted">Accepted</option>
                       <option value="Rejected">Rejected</option>

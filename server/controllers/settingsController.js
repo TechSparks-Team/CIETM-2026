@@ -71,10 +71,32 @@ const broadcastNotification = async (req, res) => {
 // @access  Admin
 const exportRegistrations = async (req, res) => {
     try {
-        const registrations = await Registration.find({}).populate('userId', 'name email phone delegateId');
+        const { status, paymentStatus, track, category, attended, authorType, columns } = req.query;
+        const query = {};
+
+        if (status && status !== 'All') query.status = status;
+        if (paymentStatus && paymentStatus !== 'All') query.paymentStatus = paymentStatus;
+        if (track && track !== 'All') query['paperDetails.track'] = track;
+        if (category && category !== 'All') query['personalDetails.category'] = category;
+        if (attended !== undefined && attended !== 'All') query.attended = attended === 'true';
+        
+        // Handle Internal/External filter
+        if (authorType && authorType !== 'All') {
+            const internalPattern = /(ciet|coimbatore institute of engineering and technology)/i;
+            if (authorType === 'Internal') {
+                query['personalDetails.institution'] = { $regex: internalPattern };
+            } else if (authorType === 'External') {
+                query['personalDetails.institution'] = { $not: internalPattern };
+            }
+        }
+
+        const registrations = await Registration.find(query).populate('userId', 'name email phone delegateId');
+
+        // Parse selected columns if provided
+        const selectedColumns = columns ? columns.split(',') : null;
 
         const csvData = registrations.map(reg => {
-            const data = {
+            const fullData = {
                 'Delegate ID': reg.userId?.delegateId || 'N/A',
                 'Paper ID': reg.paperId || (reg.authorId || `#PAPER-${reg._id.toString().slice(-6).toUpperCase()}`),
                 'Principal Author Name': reg.personalDetails?.name || reg.userId?.name,
@@ -98,14 +120,25 @@ const exportRegistrations = async (req, res) => {
             for (let i = 0; i < 4; i++) {
                 const member = reg.teamMembers && reg.teamMembers[i];
                 const prefix = `Co-Author ${i + 1}`;
-                data[`${prefix} Name`] = member?.name || '';
-                data[`${prefix} Email`] = member?.email || '';
-                data[`${prefix} Affiliation`] = member?.affiliation || '';
-                data[`${prefix} Category`] = member?.category || '';
-                data[`${prefix} Specialization`] = member?.areaOfSpecialization || '';
+                fullData[`${prefix} Name`] = member?.name || '';
+                fullData[`${prefix} Email`] = member?.email || '';
+                fullData[`${prefix} Affiliation`] = member?.affiliation || '';
+                fullData[`${prefix} Category`] = member?.category || '';
+                fullData[`${prefix} Specialization`] = member?.areaOfSpecialization || '';
             }
 
-            return data;
+            // If selective columns are requested, filter the object
+            if (selectedColumns) {
+                const filteredData = {};
+                selectedColumns.forEach(col => {
+                    if (fullData.hasOwnProperty(col)) {
+                        filteredData[col] = fullData[col];
+                    }
+                });
+                return filteredData;
+            }
+
+            return fullData;
         });
 
         res.json(csvData);

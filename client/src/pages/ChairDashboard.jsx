@@ -99,6 +99,22 @@ const ChairDashboard = () => {
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [activeReviewerMenu, setActiveReviewerMenu] = useState(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportFilters, setExportFilters] = useState({
+    status: 'All',
+    paymentStatus: 'All',
+    track: 'All',
+    category: 'All',
+    attended: 'All',
+    authorType: 'All'
+  });
+  const [selectedColumns, setSelectedColumns] = useState([
+    'Delegate ID', 'Paper ID', 'Principal Author Name', 'Principal Email', 
+    'Mobile Number', 'Author Type', 'Author Category', 'Affiliation (Institute/Industry)', 
+    'Department', 'Area of Specialization', 'Paper Title', 'Conference Track', 
+    'Submission Status', 'Payment Status', 'Transaction ID', 'Amount (INR)', 'Payment Date'
+  ]);
+  const [includeCoAuthors, setIncludeCoAuthors] = useState(true);
   const mobileFilterRef = useRef(null);
 
   // Unified Inspector States
@@ -301,15 +317,36 @@ const ChairDashboard = () => {
   };
 
   const exportToExcel = async () => {
-    const loadingToast = toast.loading("Preparing Excel workbook...");
+    const loadingToast = toast.loading("Preparing filtered workbook...");
     try {
-      const config = { headers: { Authorization: `Bearer ${user?.token}` } };
+      let cols = [...selectedColumns];
+      if (includeCoAuthors) {
+        for (let i = 1; i <= 4; i++) {
+          cols.push(`Co-Author ${i} Name`, `Co-Author ${i} Email`, `Co-Author ${i} Affiliation`, `Co-Author ${i} Category`, `Co-Author ${i} Specialization`);
+        }
+      }
+
+      const config = { 
+        headers: { Authorization: `Bearer ${user?.token}` },
+        params: {
+          ...exportFilters,
+          columns: cols.join(',')
+        }
+      };
       const { data } = await axios.get('/api/settings/export', config);
+      if (data.length === 0) {
+        toast.error("No registrations found matching these filters", { id: loadingToast });
+        return;
+      }
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Registrations");
-      XLSX.writeFile(wb, `CIETM_Registrations_${new Date().toISOString().split('T')[0]}.xlsx`);
-      toast.success("Excel file downloaded successfully", { id: loadingToast });
+      
+      const filterTag = exportFilters.status !== 'All' ? `_${exportFilters.status}` : '';
+      XLSX.writeFile(wb, `CIETM_Registrations${filterTag}_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast.success(`Exported ${data.length} records successfully`, { id: loadingToast });
+      setIsExportModalOpen(false);
     } catch (error) {
       toast.error("Excel export failed", { id: loadingToast });
     }
@@ -576,7 +613,7 @@ const ChairDashboard = () => {
                <RefreshCw size={14} className={`${refreshing ? 'animate-spin' : ''}`} /> 
                <span className="hidden sm:inline">Force Sync</span>
              </button>
-             <button title="Export to Excel" onClick={exportToExcel} className="p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
+             <button title="Export to Excel" onClick={() => setIsExportModalOpen(true)} className="p-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2">
                <Download size={18} className="text-blue-600" />
                <span className="text-[10px] font-black uppercase tracking-widest hidden lg:inline text-slate-600">Export XLSX</span>
              </button>
@@ -2208,6 +2245,209 @@ const ChairDashboard = () => {
                 >
                   Save Expertise
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isExportModalOpen && (
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setIsExportModalOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white w-full max-w-lg rounded-3xl shadow-2xl relative overflow-hidden flex flex-col p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between mb-8">
+                 <div>
+                    <h3 className="text-xl font-black text-slate-800 leading-tight uppercase">Export Registrations</h3>
+                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Select filters for XLSX data</p>
+                 </div>
+                 <button 
+                   onClick={() => setIsExportModalOpen(false)}
+                   className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                 >
+                   <X size={20} />
+                 </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Status Filter */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 block">Submission Status</label>
+                    <select 
+                      value={exportFilters.status}
+                      onChange={(e) => setExportFilters({...exportFilters, status: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    >
+                      <option value="All">All Statuses</option>
+                      <option value="Draft">Draft</option>
+                      <option value="Submitted">Submitted</option>
+                      <option value="Under Review">Under Review</option>
+                      <option value="Accepted">Accepted</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 block">Payment Status</label>
+                    <select 
+                      value={exportFilters.paymentStatus}
+                      onChange={(e) => setExportFilters({...exportFilters, paymentStatus: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    >
+                      <option value="All">All Payments</option>
+                      <option value="Pending">Pending</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Failed">Failed</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Track & Author Type Filter */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 block">Conference Track</label>
+                    <select 
+                      value={exportFilters.track}
+                      onChange={(e) => setExportFilters({...exportFilters, track: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    >
+                      <option value="All">All Tracks</option>
+                      {CONFERENCE_TRACKS.map(track => (
+                        <option key={track.id} value={track.id}>{track.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 block">Author Type</label>
+                    <select 
+                      value={exportFilters.authorType}
+                      onChange={(e) => setExportFilters({...exportFilters, authorType: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    >
+                      <option value="All">All Types</option>
+                      <option value="Internal">Internal (CIET)</option>
+                      <option value="External">External</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Category Filter */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 block">Author Category</label>
+                    <select 
+                      value={exportFilters.category}
+                      onChange={(e) => setExportFilters({...exportFilters, category: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    >
+                      <option value="All">All Categories</option>
+                      {Object.keys(CATEGORY_AMOUNTS).map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 block">Attendance</label>
+                    <select 
+                      value={exportFilters.attended}
+                      onChange={(e) => setExportFilters({...exportFilters, attended: e.target.value})}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    >
+                      <option value="All">All Participants</option>
+                      <option value="true">Marked Present</option>
+                      <option value="false">Marked Absent</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Column Selection */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Select Columns to Include</label>
+                    <button 
+                      onClick={() => {
+                        const all = [
+                          'Delegate ID', 'Paper ID', 'Principal Author Name', 'Principal Email', 
+                          'Mobile Number', 'Author Type', 'Author Category', 'Affiliation (Institute/Industry)', 
+                          'Department', 'Area of Specialization', 'Paper Title', 'Conference Track', 
+                          'Submission Status', 'Payment Status', 'Transaction ID', 'Amount (INR)', 'Payment Date'
+                        ];
+                        setSelectedColumns(selectedColumns.length === all.length ? [] : all);
+                      }}
+                      className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline"
+                    >
+                      {selectedColumns.length === 17 ? 'Unselect All' : 'Select All'}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 max-h-48 overflow-y-auto custom-scrollbar">
+                    {[
+                      { id: 'Delegate ID', label: 'Delegate ID' },
+                      { id: 'Paper ID', label: 'Paper ID' },
+                      { id: 'Principal Author Name', label: 'Author Name' },
+                      { id: 'Principal Email', label: 'Email' },
+                      { id: 'Mobile Number', label: 'Mobile' },
+                      { id: 'Author Type', label: 'Author Type' },
+                      { id: 'Author Category', label: 'Author Category' },
+                      { id: 'Affiliation (Institute/Industry)', label: 'Institution' },
+                      { id: 'Department', label: 'Department' },
+                      { id: 'Area of Specialization', label: 'Specialization' },
+                      { id: 'Paper Title', label: 'Paper Title' },
+                      { id: 'Conference Track', label: 'Track' },
+                      { id: 'Submission Status', label: 'Status' },
+                      { id: 'Payment Status', label: 'Payment' },
+                      { id: 'Transaction ID', label: 'Transaction ID' },
+                      { id: 'Amount (INR)', label: 'Amount' },
+                      { id: 'Payment Date', label: 'Date' },
+                    ].map(col => (
+                      <label key={col.id} className="flex items-center gap-2 cursor-pointer group">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedColumns.includes(col.id)}
+                          onChange={() => {
+                            if (selectedColumns.includes(col.id)) {
+                              setSelectedColumns(selectedColumns.filter(c => c !== col.id));
+                            } else {
+                              setSelectedColumns([...selectedColumns, col.id]);
+                            }
+                          }}
+                          className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20"
+                        />
+                        <span className="text-[10px] font-bold text-slate-600 group-hover:text-indigo-600 transition-colors truncate">{col.label}</span>
+                      </label>
+                    ))}
+                    <label className="flex items-center gap-2 cursor-pointer group pt-2 mt-2 border-t border-slate-200 col-span-full">
+                        <input 
+                          type="checkbox" 
+                          checked={includeCoAuthors}
+                          onChange={() => setIncludeCoAuthors(!includeCoAuthors)}
+                          className="w-3 h-3 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20"
+                        />
+                        <span className="text-[10px] font-black text-slate-800 group-hover:text-indigo-600 transition-colors">Include Co-Author Details (Up to 4)</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-10 flex gap-4">
+                 <button 
+                   onClick={() => setIsExportModalOpen(false)}
+                   className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                 >
+                   Cancel
+                 </button>
+                 <button 
+                   onClick={exportToExcel}
+                   className="flex-[2] py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-2"
+                 >
+                   <Download size={16} />
+                   Download Filtered XLSX
+                 </button>
               </div>
             </motion.div>
           </div>
